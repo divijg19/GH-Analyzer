@@ -3,8 +3,28 @@ package ghanalyzer
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strings"
 	"time"
+)
+
+const (
+	recentWindowDays   = 90
+	minDepthRepoSize   = 50
+	scoreScale         = 100.0
+	minSignalValue     = 0.0
+	maxSignalValue     = 1.0
+	ownershipWeight    = 0.3
+	consistencyWeight  = 0.4
+	depthWeight        = 0.3
+
+	strongScoreThreshold   = 70
+	moderateScoreThreshold = 40
+
+	highlightConsistency = "Active in last 90 days"
+	highlightOwnership   = "Majority original repositories"
+	highlightDepth       = "Includes non-trivial projects"
 )
 
 type Repo struct {
@@ -20,13 +40,27 @@ type Signals struct {
 	Depth       float64
 }
 
+type Scores struct {
+	Ownership   int
+	Consistency int
+	Depth       int
+	Overall     int
+}
+
+type Report struct {
+	Username   string   `json:"username"`
+	Scores     Scores   `json:"scores"`
+	Summary    string   `json:"summary"`
+	Highlights []string `json:"highlights"`
+}
+
 func ExtractSignals(repos []Repo) Signals {
 	total := len(repos)
 	if total == 0 {
 		return Signals{}
 	}
 
-	cutoff := time.Now().AddDate(0, 0, -90)
+	cutoff := time.Now().AddDate(0, 0, -recentWindowDays)
 	nonForkCount := 0
 	recentCount := 0
 	depthCount := 0
@@ -35,7 +69,7 @@ func ExtractSignals(repos []Repo) Signals {
 	for _, repo := range repos {
 		if !repo.Fork {
 			nonForkCount++
-			if repo.Size >= 50 {
+			if repo.Size >= minDepthRepoSize {
 				depthCount++
 				depthTotalSize += repo.Size
 			}
@@ -56,6 +90,80 @@ func ExtractSignals(repos []Repo) Signals {
 		Consistency: float64(recentCount) / float64(total),
 		Depth:       depth,
 	}
+}
+
+func ScoreSignals(signals Signals) Scores {
+	ownership := signalToScore(signals.Ownership)
+	consistency := signalToScore(signals.Consistency)
+	depth := signalToScore(signals.Depth)
+
+	overallFloat :=
+		(float64(consistency) * consistencyWeight) +
+		(float64(ownership) * ownershipWeight) +
+		(float64(depth) * depthWeight)
+
+	return Scores{
+		Ownership:   ownership,
+		Consistency: consistency,
+		Depth:       depth,
+		Overall:     int(math.Round(overallFloat)),
+	}
+}
+
+func BuildReport(username string, scores Scores) Report {
+	return Report{
+		Username:   username,
+		Scores:     scores,
+		Summary:    buildSummary(scores),
+		Highlights: buildHighlights(scores),
+	}
+}
+
+func buildSummary(scores Scores) string {
+	consistency := scoreLevel(scores.Consistency)
+	ownership := strings.ToLower(scoreLevel(scores.Ownership))
+	depth := strings.ToLower(scoreLevel(scores.Depth))
+
+	return fmt.Sprintf("%s consistency, %s ownership, %s depth", consistency, ownership, depth)
+}
+
+func buildHighlights(scores Scores) []string {
+	highlights := []string{}
+
+	if scores.Consistency > strongScoreThreshold {
+		highlights = append(highlights, highlightConsistency)
+	}
+	if scores.Ownership > strongScoreThreshold {
+		highlights = append(highlights, highlightOwnership)
+	}
+	if scores.Depth > strongScoreThreshold {
+		highlights = append(highlights, highlightDepth)
+	}
+
+	return highlights
+}
+
+func scoreLevel(score int) string {
+	if score > strongScoreThreshold {
+		return "Strong"
+	}
+	if score >= moderateScoreThreshold {
+		return "Moderate"
+	}
+
+	return "Low"
+}
+
+func signalToScore(value float64) int {
+	if value < minSignalValue {
+		value = minSignalValue
+	}
+	if value > maxSignalValue {
+		value = maxSignalValue
+	}
+
+	scaled := value * scoreScale
+	return int(math.Round(scaled))
 }
 
 func FetchRepos(username string) ([]Repo, error) {
