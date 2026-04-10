@@ -1,0 +1,68 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"net/http"
+	"strings"
+
+	ghanalyzer "github.com/divijg19/GH-Analyzer"
+)
+
+const (
+	serverAddr                   = ":8080"
+	minReposForFullScore         = 3
+	smallSampleOverallMultiplier = 0.7
+)
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+func writeJSONError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(errorResponse{Error: message})
+}
+
+func analyzeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing username")
+		return
+	}
+
+	repos, err := ghanalyzer.FetchRepos(username)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to fetch repositories")
+		return
+	}
+
+	signals := ghanalyzer.ExtractSignals(repos)
+	scores := ghanalyzer.ScoreSignals(signals)
+	if len(repos) < minReposForFullScore {
+		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
+	}
+
+	report := ghanalyzer.BuildReport(username, scores, repos)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(report)
+}
+
+func main() {
+	http.HandleFunc("/analyze", analyzeHandler)
+	fmt.Println("server running on :8080")
+	if err := http.ListenAndServe(serverAddr, nil); err != nil {
+		panic(err)
+	}
+}
