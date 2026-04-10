@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -14,7 +15,6 @@ func main() {
 	}
 
 	username := os.Args[1]
-	fmt.Printf("Analyzing %s\n", username)
 
 	repos, err := ghanalyzer.FetchRepos(username)
 	if err != nil {
@@ -22,11 +22,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Total repos: %d\n", len(repos))
-
 	signals := ghanalyzer.ExtractSignals(repos)
-	fmt.Println("Signals:")
-	fmt.Printf("Ownership: %.2f\n", signals.Ownership)
-	fmt.Printf("Consistency: %.2f\n", signals.Consistency)
-	fmt.Printf("Depth: %.2f\n", signals.Depth)
+
+	scores := ghanalyzer.ScoreSignals(signals)
+	report := ghanalyzer.BuildReport(username, scores)
+
+	output, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(output))
 }
