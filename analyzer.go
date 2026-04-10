@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -25,6 +26,7 @@ const (
 	highlightConsistency = "Active in last 90 days"
 	highlightOwnership   = "Majority original repositories"
 	highlightDepth       = "Includes non-trivial projects"
+	topRepoLimit         = 3
 )
 
 type Repo struct {
@@ -48,10 +50,16 @@ type Scores struct {
 }
 
 type Report struct {
-	Username   string   `json:"username"`
-	Scores     Scores   `json:"scores"`
-	Summary    string   `json:"summary"`
-	Highlights []string `json:"highlights"`
+	Username   string    `json:"username"`
+	Scores     Scores    `json:"scores"`
+	Summary    string    `json:"summary"`
+	Highlights []string  `json:"highlights"`
+	TopRepos   []TopRepo `json:"top_repos"`
+}
+
+type TopRepo struct {
+	Name string `json:"name"`
+	Size int    `json:"size"`
 }
 
 func ExtractSignals(repos []Repo) Signals {
@@ -108,13 +116,39 @@ func ScoreSignals(signals Signals) Scores {
 	}
 }
 
-func BuildReport(username string, scores Scores) Report {
+func BuildReport(username string, scores Scores, repos []Repo) Report {
 	return Report{
 		Username:   username,
 		Scores:     scores,
 		Summary:    buildSummary(scores),
 		Highlights: buildHighlights(scores),
+		TopRepos:   extractTopRepos(repos),
 	}
+}
+
+func extractTopRepos(repos []Repo) []TopRepo {
+	topRepos := make([]TopRepo, 0, len(repos))
+
+	for _, repo := range repos {
+		if repo.Fork {
+			continue
+		}
+
+		topRepos = append(topRepos, TopRepo{
+			Name: repo.Name,
+			Size: repo.Size,
+		})
+	}
+
+	sort.Slice(topRepos, func(i, j int) bool {
+		return topRepos[i].Size > topRepos[j].Size
+	})
+
+	if len(topRepos) > topRepoLimit {
+		topRepos = topRepos[:topRepoLimit]
+	}
+
+	return topRepos
 }
 
 func buildSummary(scores Scores) string {

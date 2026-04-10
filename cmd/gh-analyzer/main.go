@@ -34,7 +34,7 @@ func main() {
 	if len(repos) < minReposForFullScore {
 		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
 	}
-	report := ghanalyzer.BuildReport(username, scores)
+	report := ghanalyzer.BuildReport(username, scores, repos)
 
 	output, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
