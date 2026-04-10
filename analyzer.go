@@ -10,14 +10,15 @@ import (
 )
 
 const (
-	recentWindowDays   = 90
-	minDepthRepoSize   = 50
-	scoreScale         = 100.0
-	minSignalValue     = 0.0
-	maxSignalValue     = 1.0
-	ownershipWeight    = 0.3
-	consistencyWeight  = 0.4
-	depthWeight        = 0.3
+	recentWindowDays      = 90
+	minDepthRepoSize      = 50
+	maxReasonableRepoSize = 1000.0
+	scoreScale            = 100.0
+	minSignalValue        = 0.0
+	maxSignalValue        = 1.0
+	ownershipWeight       = 0.3
+	consistencyWeight     = 0.4
+	depthWeight           = 0.3
 
 	strongScoreThreshold   = 70
 	moderateScoreThreshold = 40
@@ -41,10 +42,10 @@ type Signals struct {
 }
 
 type Scores struct {
-	Ownership   int
-	Consistency int
-	Depth       int
-	Overall     int
+	Ownership   int `json:"ownership"`
+	Consistency int `json:"consistency"`
+	Depth       int `json:"depth"`
+	Overall     int `json:"overall"`
 }
 
 type Report struct {
@@ -84,12 +85,24 @@ func ExtractSignals(repos []Repo) Signals {
 	if depthCount > 0 {
 		depth = float64(depthTotalSize) / float64(depthCount)
 	}
+	depth = normalizeDepth(depth)
 
 	return Signals{
 		Ownership:   float64(nonForkCount) / float64(total),
 		Consistency: float64(recentCount) / float64(total),
 		Depth:       depth,
 	}
+}
+
+func normalizeDepth(size float64) float64 {
+	if size <= 0 {
+		return 0
+	}
+	if size > maxReasonableRepoSize {
+		size = maxReasonableRepoSize
+	}
+
+	return size / maxReasonableRepoSize
 }
 
 func ScoreSignals(signals Signals) Scores {
@@ -99,8 +112,8 @@ func ScoreSignals(signals Signals) Scores {
 
 	overallFloat :=
 		(float64(consistency) * consistencyWeight) +
-		(float64(ownership) * ownershipWeight) +
-		(float64(depth) * depthWeight)
+			(float64(ownership) * ownershipWeight) +
+			(float64(depth) * depthWeight)
 
 	return Scores{
 		Ownership:   ownership,
