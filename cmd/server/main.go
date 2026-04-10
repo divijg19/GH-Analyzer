@@ -21,9 +21,12 @@ type errorResponse struct {
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(errorResponse{Error: message})
+	if err := json.NewEncoder(w).Encode(errorResponse{Error: message}); err != nil {
+		http.Error(w, "failed to encode error response", http.StatusInternalServerError)
+	}
 }
 
 func analyzeHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,11 +56,15 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 
 	report := ghanalyzer.BuildReport(username, scores, repos)
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	_ = encoder.Encode(report)
+	if err := encoder.Encode(report); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
