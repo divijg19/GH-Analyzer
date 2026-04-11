@@ -6,19 +6,19 @@ type TopReposProps = {
 
 export default function TopRepos(props: TopReposProps) {
 	return (
-		<section class="card-section">
-			<h3 class="section-title">Top Repositories</h3>
+		<section class="mt-4">
+			<h3 class="text-sm font-semibold">Top Repositories</h3>
 			{props.repos.length > 0 ? (
-				<ul class="section-list">
+				<ul class="mt-2 space-y-1">
 					{props.repos.map((repo) => (
 						<li>
 							<span>{repo.name}</span>
-							<span class="muted"> — {repo.size}</span>
+							<span class="text-gray-600"> — {repo.size}</span>
 						</li>
 					))}
 				</ul>
 			) : (
-				<p class="section-text">No repositories found.</p>
+				<p class="mt-2 text-gray-600">No repositories found.</p>
 			)}
 		</section>
 	);

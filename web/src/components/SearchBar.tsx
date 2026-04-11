@@ -21,7 +21,7 @@ export default function SearchBar(props: SearchBarProps) {
 	};
 
 	return (
-		<form onSubmit={handleSubmit} class="search-form">
+		<form onSubmit={handleSubmit} class="mx-6 flex flex-1 items-center gap-3">
 			<input
 				type="text"
 				autofocus
@@ -29,9 +29,13 @@ export default function SearchBar(props: SearchBarProps) {
 				value={props.username}
 				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
 				disabled={props.loading}
-				class="search-input"
+				class="mx-auto w-full max-w-xl rounded-md border px-4 py-2 focus:outline-none focus:ring-2"
 			/>
-			<button type="submit" disabled={isDisabled()} class="search-button">
+			<button
+				type="submit"
+				disabled={isDisabled()}
+				class="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+			>
 				Analyze
 			</button>
 		</form>
