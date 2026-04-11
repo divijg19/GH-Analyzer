@@ -56,79 +56,47 @@ export default function App() {
 	};
 
 	return (
-		<div
-			style={{
-				"min-height": "100vh",
-				padding: "32px 16px",
-				"background-color": "#f5f6f8",
-				"font-family":
-					"system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-				color: "#1f2937",
-			}}
-		>
-			<main
-				style={{
-					margin: "0 auto",
-					"max-width": "700px",
-					padding: "24px",
-					"background-color": "#ffffff",
-					border: "1px solid #e5e7eb",
-					"border-radius": "8px",
-					display: "grid",
-					gap: "16px",
-				}}
-			>
-				<style>
-					{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}
-				</style>
-				<h1 style={{ margin: "0 0 8px 0", "font-size": "28px" }}>
-					GH-Analyzer
-				</h1>
-				<p style={{ margin: "0", color: "#4b5563" }}>
-					Analyze a GitHub username using the local gh-analyzer API.
-				</p>
+		<div class="app-shell">
+			<aside class="left-panel">
+				<div class="left-panel-inner">
+					<h1 class="app-title">GH Analyzer</h1>
+					<p class="app-subtitle">Analyze GitHub developer signals</p>
+					<SearchBar
+						username={username()}
+						loading={loading()}
+						onUsernameChange={setUsername}
+						onSubmit={analyze}
+					/>
+				</div>
+			</aside>
 
-				<SearchBar
-					username={username()}
-					loading={loading()}
-					onUsernameChange={setUsername}
-					onSubmit={analyze}
-				/>
+			<main class="right-panel">
+				<div class="right-panel-inner">
+					<Show when={loading()}>
+						<div class="state-view">
+							<span class="spinner" aria-hidden="true" />
+							<p class="state-text">Analyzing "{activeUsername()}"...</p>
+						</div>
+					</Show>
 
-				<Show when={loading()}>
-					<div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
-						<span
-							aria-hidden="true"
-							style={{
-								width: "14px",
-								height: "14px",
-								border: "2px solid #d1d5db",
-								"border-top-color": "#111827",
-								"border-radius": "999px",
-								animation: "spin 0.8s linear infinite",
-							}}
-						/>
-						<p style={{ margin: "0", color: "#374151" }}>
-							Analyzing {activeUsername()}...
-						</p>
-					</div>
-				</Show>
+					<Show when={!loading() && error()}>
+						{(message) => (
+							<div class="error-card">
+								<p class="error-text">❌ {message()}</p>
+							</div>
+						)}
+					</Show>
 
-				<Show when={error()}>
-					{(message) => (
-						<p style={{ margin: "0", color: "#b91c1c", "font-weight": "500" }}>
-							❌ {message()}
-						</p>
-					)}
-				</Show>
+					<Show when={!loading() && !error() && !result()}>
+						<div class="state-view">
+							<p class="state-text">Run an analysis to evaluate a developer</p>
+						</div>
+					</Show>
 
-				<Show when={!loading() && !error() && !result()}>
-					<p style={{ margin: "0", color: "#4b5563", "text-align": "center" }}>
-						Enter a GitHub username to analyze developer signals
-					</p>
-				</Show>
-
-				<Show when={result()}>{(report) => <Results report={report()} />}</Show>
+					<Show when={!loading() && result()}>
+						{(report) => <Results report={report()} />}
+					</Show>
+				</div>
 			</main>
 		</div>
 	);
