@@ -12,7 +12,7 @@ export default function Results(props: ResultsProps) {
 		<article class="space-y-6">
 			<header>
 				<h2 class="text-xl font-semibold">{props.report.username}</h2>
-				<p class="mt-4 text-center text-5xl font-bold">
+				<p class="mb-2 mt-6 text-center text-5xl font-bold">
 					{props.report.scores.overall}
 				</p>
 				<p class="text-center text-sm text-gray-500">Overall Score</p>

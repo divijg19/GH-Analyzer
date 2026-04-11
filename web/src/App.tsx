@@ -60,7 +60,7 @@ export default function App() {
 	return (
 		<div class="h-screen overflow-hidden bg-gray-50 text-gray-900">
 			<div class="mx-auto flex h-full box-border flex-col px-6 py-6">
-				<header class="mx-auto mt-2 w-full max-w-4xl shrink-0 rounded-xl border bg-white px-6 py-4 shadow-sm">
+				<header class="mx-auto mt-2 w-full max-w-6xl shrink-0 rounded-lg bg-white px-6 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
 					<div class="flex items-center">
 						<p class="shrink-0 text-sm font-semibold">GH Analyzer</p>
 						<SearchBar
@@ -73,13 +73,13 @@ export default function App() {
 					<div class="mt-3 flex items-center gap-2">
 						<button
 							type="button"
-							class="rounded-md border bg-gray-100 px-3 py-1 text-sm text-gray-900"
+							class="rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-900"
 						>
 							Analyze
 						</button>
 						<button
 							type="button"
-							class="rounded-md border border-transparent px-3 py-1 text-sm text-gray-500"
+							class="rounded-md px-3 py-1 text-sm text-gray-500"
 						>
 							Search
 						</button>
@@ -87,13 +87,13 @@ export default function App() {
 				</header>
 
 				<div class="mx-auto mt-6 flex min-h-0 w-full max-w-6xl flex-1 gap-6 overflow-hidden">
-					<aside class="w-64 self-start rounded-xl border bg-white p-4 text-sm text-gray-500 shadow-sm">
+					<aside class="w-64 self-start rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-400 shadow-sm">
 						<p>Filters (coming soon)</p>
 					</aside>
 
-					<main class="h-full min-h-0 max-w-3xl flex-1 overflow-y-auto rounded-2xl border bg-white p-6 shadow-sm">
+					<main class="mx-auto h-full min-h-0 max-w-3xl flex-1 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 shadow-md">
 						<Show when={loading()}>
-							<div class="flex min-h-96 items-center justify-center">
+							<div class="flex min-h-96 items-center justify-center py-4">
 								<div class="flex flex-col items-center gap-3 text-gray-600">
 									<span class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
 									<p>Analyzing "{username()}"...</p>
@@ -103,14 +103,14 @@ export default function App() {
 
 						<Show when={!loading() && error()}>
 							{(message) => (
-								<div class="flex min-h-96 items-center justify-center">
+								<div class="flex min-h-96 items-center justify-center py-4">
 									<p class="text-red-500">❌ {message()}</p>
 								</div>
 							)}
 						</Show>
 
 						<Show when={!loading() && !error() && !result()}>
-							<div class="flex min-h-96 items-center justify-center text-gray-500">
+							<div class="flex min-h-96 items-center justify-center py-4 text-gray-500">
 								<p>Search for a GitHub user to begin analysis</p>
 							</div>
 						</Show>

@@ -17,7 +17,7 @@ export default function Scores(props: ScoresProps) {
 			<h3 class="text-xs uppercase tracking-wide text-gray-400">Scores</h3>
 			<div class="mt-3 space-y-3">
 				{rows.map((row) => (
-					<div>
+					<div class="space-y-1">
 						<div class="flex justify-between text-sm">
 							<span>{row.label}</span>
 							<span>{row.value}</span>
