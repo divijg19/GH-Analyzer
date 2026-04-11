@@ -62,6 +62,15 @@ type TopRepo struct {
 	Size int    `json:"size"`
 }
 
+type GitHubAPIError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e GitHubAPIError) Error() string {
+	return e.Message
+}
+
 func ExtractSignals(repos []Repo) Signals {
 	total := len(repos)
 	if total == 0 {
@@ -217,7 +226,19 @@ func FetchRepos(username string) ([]Repo, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("github api returned status %s", resp.Status)
+		var githubError struct {
+			Message string `json:"message"`
+		}
+
+		message := resp.Status
+		if err := json.NewDecoder(resp.Body).Decode(&githubError); err == nil && strings.TrimSpace(githubError.Message) != "" {
+			message = strings.TrimSpace(githubError.Message)
+		}
+
+		return nil, GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Message:    message,
+		}
 	}
 
 	var repos []Repo
