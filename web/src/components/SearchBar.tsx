@@ -8,10 +8,15 @@ type SearchBarProps = {
 };
 
 export default function SearchBar(props: SearchBarProps) {
+	const isDisabled = () => props.loading || props.username.trim().length === 0;
+
 	const handleSubmit: JSX.EventHandler<HTMLFormElement, SubmitEvent> = (
 		event,
 	) => {
 		event.preventDefault();
+		if (isDisabled()) {
+			return;
+		}
 		props.onSubmit();
 	};
 
@@ -22,7 +27,8 @@ export default function SearchBar(props: SearchBarProps) {
 		>
 			<input
 				type="text"
-				placeholder="GitHub username"
+				autofocus
+				placeholder="Enter GitHub username (e.g. torvalds)"
 				value={props.username}
 				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
 				disabled={props.loading}
@@ -36,7 +42,7 @@ export default function SearchBar(props: SearchBarProps) {
 			/>
 			<button
 				type="submit"
-				disabled={props.loading}
+				disabled={isDisabled()}
 				style={{
 					padding: "10px 14px",
 					border: "1px solid #111827",
@@ -44,8 +50,8 @@ export default function SearchBar(props: SearchBarProps) {
 					"background-color": "#111827",
 					color: "#ffffff",
 					"font-size": "14px",
-					cursor: props.loading ? "not-allowed" : "pointer",
-					opacity: props.loading ? "0.7" : "1",
+					cursor: isDisabled() ? "not-allowed" : "pointer",
+					opacity: isDisabled() ? "0.7" : "1",
 				}}
 			>
 				Analyze

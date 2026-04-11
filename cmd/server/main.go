@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -44,7 +45,24 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 
 	repos, err := ghanalyzer.FetchRepos(username)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to fetch repositories")
+		var githubAPIError ghanalyzer.GitHubAPIError
+		if errors.As(err, &githubAPIError) {
+			switch githubAPIError.StatusCode {
+			case http.StatusNotFound:
+				writeJSONError(w, http.StatusNotFound, "GitHub user not found")
+			case http.StatusForbidden:
+				if strings.Contains(strings.ToLower(githubAPIError.Message), "rate limit") {
+					writeJSONError(w, http.StatusTooManyRequests, "GitHub API rate limit exceeded. Please try again later.")
+					break
+				}
+				writeJSONError(w, http.StatusBadGateway, "GitHub API access denied")
+			default:
+				writeJSONError(w, http.StatusBadGateway, "GitHub API request failed")
+			}
+			return
+		}
+
+		writeJSONError(w, http.StatusBadGateway, "unable to reach GitHub API")
 		return
 	}
 
