@@ -29,7 +29,7 @@ export default function SearchBar(props: SearchBarProps) {
 				value={props.username}
 				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
 				disabled={props.loading}
-				class="mx-auto w-full max-w-xl rounded-md border px-4 py-2 focus:outline-none focus:ring-2"
+				class="w-full flex-1 rounded-md border px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/20"
 			/>
 			<button
 				type="submit"

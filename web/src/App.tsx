@@ -58,10 +58,10 @@ export default function App() {
 	};
 
 	return (
-		<div class="h-screen bg-gray-100 text-gray-900">
-			<header class="sticky top-0 border-b bg-white px-6 py-4">
-				<div class="flex items-center justify-between">
-					<p class="shrink-0 font-semibold">GH Analyzer</p>
+		<div class="min-h-screen bg-gray-50 px-6 py-6 text-gray-900">
+			<header class="mx-auto mt-2 max-w-4xl rounded-xl border bg-white px-6 py-4 shadow-sm">
+				<div class="flex items-center">
+					<p class="shrink-0 text-sm font-semibold">GH Analyzer</p>
 					<SearchBar
 						username={username()}
 						loading={loading()}
@@ -69,17 +69,30 @@ export default function App() {
 						onSubmit={analyze}
 					/>
 				</div>
+				<div class="mt-3 flex items-center gap-2">
+					<button
+						type="button"
+						class="rounded-md border bg-gray-100 px-3 py-1 text-sm text-gray-900"
+					>
+						Analyze
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-transparent px-3 py-1 text-sm text-gray-500"
+					>
+						Search
+					</button>
+				</div>
 			</header>
 
-			<div class="flex h-[calc(100vh-64px)] overflow-hidden">
-				<aside class="w-64 border-r bg-white p-4 text-sm text-gray-500">
-					<h2 class="mb-2 text-sm font-semibold text-gray-700">Filters</h2>
-					<p>Coming soon</p>
+			<div class="mx-auto mt-6 flex max-w-6xl items-start gap-6">
+				<aside class="w-64 rounded-xl border bg-white p-4 text-sm text-gray-500 shadow-sm">
+					<p>Filters (coming soon)</p>
 				</aside>
 
-				<main class="flex-1 overflow-y-auto p-6">
+				<main class="max-w-3xl flex-1 rounded-2xl border bg-white p-6 shadow-sm">
 					<Show when={loading()}>
-						<div class="flex h-full items-center justify-center">
+						<div class="flex min-h-96 items-center justify-center">
 							<div class="flex flex-col items-center gap-3 text-gray-600">
 								<span class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
 								<p>Analyzing "{username()}"...</p>
@@ -89,14 +102,14 @@ export default function App() {
 
 					<Show when={!loading() && error()}>
 						{(message) => (
-							<div class="flex h-full items-center justify-center">
+							<div class="flex min-h-96 items-center justify-center">
 								<p class="text-red-500">❌ {message()}</p>
 							</div>
 						)}
 					</Show>
 
 					<Show when={!loading() && !error() && !result()}>
-						<div class="flex h-full items-center justify-center text-gray-500">
+						<div class="flex min-h-96 items-center justify-center text-gray-500">
 							<p>Search for a GitHub user to begin analysis</p>
 						</div>
 					</Show>
