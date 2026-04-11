@@ -9,16 +9,18 @@ type ResultsProps = {
 
 export default function Results(props: ResultsProps) {
 	return (
-		<article class="candidate-card">
-			<header class="candidate-header">
-				<h2 class="candidate-name">{props.report.username}</h2>
-				<p class="overall-label">Overall Score</p>
-				<p class="overall-score">{props.report.scores.overall}</p>
+		<article class="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6">
+			<header>
+				<h2 class="text-xl font-semibold">{props.report.username}</h2>
+				<p class="mt-4 text-center text-sm text-gray-500">Overall Score</p>
+				<p class="text-center text-5xl font-bold">
+					{props.report.scores.overall}
+				</p>
 			</header>
 
-			<section class="card-section">
-				<h3 class="section-title">Summary</h3>
-				<p class="section-text">{props.report.summary}</p>
+			<section>
+				<h3 class="text-sm font-semibold">Summary</h3>
+				<p class="mt-2 text-gray-600">{props.report.summary}</p>
 			</section>
 
 			<Scores scores={props.report.scores} />
