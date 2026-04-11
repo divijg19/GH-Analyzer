@@ -4,24 +4,16 @@ type HighlightsProps = {
 
 export default function Highlights(props: HighlightsProps) {
 	return (
-		<section
-			style={{
-				padding: "16px 0",
-				border: "1px solid #e5e7eb",
-				"border-radius": "6px",
-			}}
-		>
-			<h3 style={{ margin: "0 16px 12px 16px", "font-size": "18px" }}>
-				Highlights
-			</h3>
+		<section class="card-section">
+			<h3 class="section-title">Highlights</h3>
 			{props.highlights.length > 0 ? (
-				<ul style={{ margin: "0", padding: "0 16px 0 32px" }}>
+				<ul class="section-list">
 					{props.highlights.map((item) => (
-						<li style={{ "margin-bottom": "8px" }}>{item}</li>
+						<li>{item}</li>
 					))}
 				</ul>
 			) : (
-				<p style={{ margin: "0 16px" }}>No highlights.</p>
+				<p class="section-text">No highlights.</p>
 			)}
 		</section>
 	);

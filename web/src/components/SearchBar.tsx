@@ -21,10 +21,7 @@ export default function SearchBar(props: SearchBarProps) {
 	};
 
 	return (
-		<form
-			onSubmit={handleSubmit}
-			style={{ display: "flex", gap: "8px", "align-items": "center" }}
-		>
+		<form onSubmit={handleSubmit} class="search-form">
 			<input
 				type="text"
 				autofocus
@@ -32,28 +29,9 @@ export default function SearchBar(props: SearchBarProps) {
 				value={props.username}
 				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
 				disabled={props.loading}
-				style={{
-					flex: "1",
-					padding: "10px 12px",
-					border: "1px solid #d1d5db",
-					"border-radius": "6px",
-					"font-size": "14px",
-				}}
+				class="search-input"
 			/>
-			<button
-				type="submit"
-				disabled={isDisabled()}
-				style={{
-					padding: "10px 14px",
-					border: "1px solid #111827",
-					"border-radius": "6px",
-					"background-color": "#111827",
-					color: "#ffffff",
-					"font-size": "14px",
-					cursor: isDisabled() ? "not-allowed" : "pointer",
-					opacity: isDisabled() ? "0.7" : "1",
-				}}
-			>
+			<button type="submit" disabled={isDisabled()} class="search-button">
 				Analyze
 			</button>
 		</form>

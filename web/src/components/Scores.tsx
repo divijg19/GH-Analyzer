@@ -13,41 +13,19 @@ export default function Scores(props: ScoresProps) {
 	];
 
 	return (
-		<section
-			style={{
-				padding: "16px",
-				border: "1px solid #e5e7eb",
-				"border-radius": "6px",
-			}}
-		>
-			<h3 style={{ margin: "0 0 12px 0", "font-size": "18px" }}>Scores</h3>
-			<div style={{ display: "grid", gap: "10px" }}>
+		<section class="card-section">
+			<h3 class="section-title">Scores</h3>
+			<div class="score-list">
 				{rows.map((row) => (
-					<div style={{ display: "grid", gap: "6px" }}>
-						<div
-							style={{
-								display: "flex",
-								"justify-content": "space-between",
-								"font-size": "14px",
-							}}
-						>
+					<div class="score-row">
+						<div class="score-row-head">
 							<span>{row.label}</span>
-							<span style={{ "font-weight": "600" }}>{row.value}</span>
+							<span class="score-value">{row.value}</span>
 						</div>
-						<div
-							style={{
-								height: "8px",
-								"background-color": "#e5e7eb",
-								"border-radius": "999px",
-								overflow: "hidden",
-							}}
-						>
+						<div class="score-track">
 							<div
-								style={{
-									height: "100%",
-									width: `${Math.max(0, Math.min(100, row.value))}%`,
-									"background-color": "#111827",
-								}}
+								class="score-fill"
+								style={{ width: `${Math.max(0, Math.min(100, row.value))}%` }}
 							/>
 						</div>
 					</div>
