@@ -59,6 +59,25 @@ func printTopMatches(results []engine.Result) {
 	}
 }
 
+func printTopCandidates(results []engine.Result) {
+	fmt.Println("Top candidates")
+	fmt.Println()
+
+	if len(results) == 0 {
+		fmt.Println("No candidates found. Try broader search input.")
+		return
+	}
+
+	for i, result := range results {
+		fmt.Printf("%d. %s - %.2f\n", i+1, result.Profile.Username, result.Score)
+		fmt.Println("   Why:")
+		for _, reason := range result.Reasons {
+			fmt.Printf("   - %s\n", reason)
+		}
+		fmt.Println()
+	}
+}
+
 func printAverageSignals(indexData indexpkg.Index) {
 	averages := calculateAverageSignals(indexData)
 	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
@@ -75,6 +94,17 @@ func printDatasetSummary(path string, indexData indexpkg.Index) {
 	fmt.Printf("avg ownership: %.2f\n", averages["ownership"])
 	fmt.Printf("avg depth: %.2f\n", averages["depth"])
 	fmt.Printf("avg activity: %.2f\n", averages["activity"])
+}
+
+func printDatasetStats(path string, indexData indexpkg.Index) {
+	averages := calculateAverageSignals(indexData)
+
+	fmt.Printf("Dataset: %s\n", path)
+	fmt.Printf("Profiles: %d\n", len(indexData.All()))
+	fmt.Println()
+	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
+	fmt.Printf("avg ownership:   %.2f\n", averages["ownership"])
+	fmt.Printf("avg depth:       %.2f\n", averages["depth"])
 }
 
 func calculateAverageSignals(indexData indexpkg.Index) map[string]float64 {

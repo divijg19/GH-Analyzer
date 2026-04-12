@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
 	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
@@ -93,6 +94,49 @@ func TestDatasetJSONOutput(t *testing.T) {
 	}
 	if len(indexData.All()) != 2 {
 		t.Fatalf("expected 2 profiles, got %d", len(indexData.All()))
+	}
+}
+
+func TestSearchJSONOutput(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--dataset", datasetPath, "--json", "backend"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var results []engine.Result
+	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
+		t.Fatalf("expected valid JSON output, got error: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected at least one search result")
+	}
+}
+
+func TestDatasetStatsOutput(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runDataset([]string{"stats", "--dataset", datasetPath})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Dataset: "+datasetPath) {
+		t.Fatalf("expected dataset path in output, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "avg consistency: 0.65") {
+		t.Fatalf("expected avg consistency, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "avg ownership:   0.65") {
+		t.Fatalf("expected avg ownership, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "avg depth:       0.50") {
+		t.Fatalf("expected avg depth, got %q", stdout)
 	}
 }
 

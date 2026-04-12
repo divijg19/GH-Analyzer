@@ -14,7 +14,7 @@ const (
 	defaultDatasetPath           = "dataset.json"
 	defaultQueryLimit            = 10
 	defaultQueryPreset           = "strong"
-	cliVersion                   = "v0.5.3"
+	cliVersion                   = "v0.6.0"
 )
 
 func main() {
@@ -53,6 +53,8 @@ func runCLI(args []string) error {
 		return runInspect(rest)
 	case "dataset":
 		return runDataset(rest)
+	case "search":
+		return runSearch(rest)
 	case "analyze":
 		return runAnalyze(rest)
 	default:
