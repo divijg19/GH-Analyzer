@@ -11,10 +11,16 @@ import (
 func runDataset(args []string) error {
 	fs := flag.NewFlagSet("dataset", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() { printDatasetHelp(fs.Output()) }
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
+	jsonOutput := fs.Bool("json", false, "output JSON")
 
-	if err := fs.Parse(args); err != nil {
+	stop, err := parseFlagsOrHelp(fs, args)
+	if err != nil {
 		return err
+	}
+	if stop {
+		return nil
 	}
 
 	indexData, err := storage.Load(*datasetPath)
@@ -23,6 +29,9 @@ func runDataset(args []string) error {
 			return missingDatasetError(*datasetPath)
 		}
 		return err
+	}
+	if *jsonOutput {
+		return writeJSON(indexData)
 	}
 
 	printDatasetSummary(*datasetPath, indexData)

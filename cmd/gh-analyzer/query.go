@@ -19,15 +19,21 @@ var andSplitter = regexp.MustCompile(`(?i)\s+AND\s+`)
 func runQuery(args []string) error {
 	fs := flag.NewFlagSet("query", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() { printQueryHelp(fs.Output()) }
 	consistency := fs.Float64("consistency", -1, "consistency threshold")
 	ownership := fs.Float64("ownership", -1, "ownership threshold")
 	depth := fs.Float64("depth", -1, "depth threshold")
 	limit := fs.Int("limit", defaultQueryLimit, "max results")
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
 	presetName := fs.String("preset", "", "preset name: strong, consistent, deep")
+	jsonOutput := fs.Bool("json", false, "output JSON")
 
-	if err := fs.Parse(args); err != nil {
+	stop, err := parseFlagsOrHelp(fs, args)
+	if err != nil {
 		return err
+	}
+	if stop {
+		return nil
 	}
 
 	indexData, err := storage.Load(*datasetPath)
@@ -100,6 +106,9 @@ func runQuery(args []string) error {
 	query := fullQuery
 	query.Limit = *limit
 	results := runner.Query(indexData, query)
+	if *jsonOutput {
+		return writeJSON(results)
+	}
 
 	printFilters(query, activePreset, *limit)
 	printMatchSummary(totalMatches, len(results), *limit)
