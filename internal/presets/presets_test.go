@@ -1,4 +1,4 @@
-package ghanalyzer
+package presets
 
 import "testing"
 

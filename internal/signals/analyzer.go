@@ -1,4 +1,4 @@
-package ghanalyzer
+package signals
 
 import (
 	"encoding/json"

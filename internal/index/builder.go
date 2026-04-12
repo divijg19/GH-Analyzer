@@ -1,8 +1,10 @@
-package ghanalyzer
+package index
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 func Build(usernames []string) (Index, error) {
@@ -16,18 +18,18 @@ func Build(usernames []string) (Index, error) {
 			continue
 		}
 
-		repos, err := FetchRepos(username)
+		repos, err := signals.FetchRepos(username)
 		if err != nil {
 			return Index{}, fmt.Errorf("fetch repos for %q: %w", username, err)
 		}
 
-		signals := ExtractSignals(repos)
-		scores := ScoreSignals(signals)
-		report := BuildReport(username, scores, repos)
+		signalValues := signals.ExtractSignals(repos)
+		scores := signals.ScoreSignals(signalValues)
+		report := signals.BuildReport(username, scores, repos)
 
 		idx.Add(Profile{
 			Username: username,
-			Signals:  SignalsFromReport(report),
+			Signals:  signals.SignalsFromReport(report),
 		})
 	}
 

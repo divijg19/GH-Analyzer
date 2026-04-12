@@ -1,6 +1,17 @@
-package ghanalyzer
+package presets
 
 import "fmt"
+
+type Query struct {
+	Conditions []Condition
+	Limit      int
+}
+
+type Condition struct {
+	Signal   string
+	Operator string
+	Value    float64
+}
 
 func Preset(name string) (Query, error) {
 	switch name {

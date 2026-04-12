@@ -1,17 +1,19 @@
-package ghanalyzer
+package storage
 
 import (
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
 )
 
 func TestSaveLoadRoundTrip(t *testing.T) {
 	tempDir := t.TempDir()
 	path := filepath.Join(tempDir, "dataset.json")
 
-	input := Index{Profiles: []Profile{
+	input := index.Index{Profiles: []index.Profile{
 		{Username: "alice", Signals: map[string]float64{"consistency": 0.8, "ownership": 0.7, "depth": 0.6}},
 		{Username: "bob", Signals: map[string]float64{"consistency": 0.5, "ownership": 0.9, "depth": 0.4}},
 	}}

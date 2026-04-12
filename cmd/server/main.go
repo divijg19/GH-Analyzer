@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	ghanalyzer "github.com/divijg19/GH-Analyzer"
+	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 const (
@@ -43,9 +43,9 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repos, err := ghanalyzer.FetchRepos(username)
+	repos, err := signals.FetchRepos(username)
 	if err != nil {
-		var githubAPIError ghanalyzer.GitHubAPIError
+		var githubAPIError signals.GitHubAPIError
 		if errors.As(err, &githubAPIError) {
 			switch githubAPIError.StatusCode {
 			case http.StatusNotFound:
@@ -66,13 +66,13 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signals := ghanalyzer.ExtractSignals(repos)
-	scores := ghanalyzer.ScoreSignals(signals)
+	signalValues := signals.ExtractSignals(repos)
+	scores := signals.ScoreSignals(signalValues)
 	if len(repos) < minReposForFullScore {
 		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
 	}
 
-	report := ghanalyzer.BuildReport(username, scores, repos)
+	report := signals.BuildReport(username, scores, repos)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
