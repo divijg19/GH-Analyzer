@@ -14,7 +14,7 @@ export default function Scores(props: ScoresProps) {
 
 	return (
 		<section>
-			<h3 class="text-xs uppercase tracking-wide text-gray-400">Scores</h3>
+			<h3 class="text-xs uppercase tracking-wide text-gray-500">Scores</h3>
 			<div class="mt-3 space-y-3">
 				{rows.map((row) => (
 					<div class="space-y-1">
