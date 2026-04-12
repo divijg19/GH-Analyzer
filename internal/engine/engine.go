@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	idx "github.com/divijg19/GH-Analyzer/internal/index"
-	"github.com/divijg19/GH-Analyzer/internal/presets"
 )
 
 type Result struct {
@@ -72,22 +71,4 @@ func matchesAllConditions(profile idx.Profile, conditions []Condition) bool {
 	}
 
 	return true
-}
-
-func QueryFromPreset(name string) (Query, error) {
-	presetQuery, err := presets.Preset(name)
-	if err != nil {
-		return Query{}, err
-	}
-
-	conditions := make([]Condition, 0, len(presetQuery.Conditions))
-	for _, condition := range presetQuery.Conditions {
-		conditions = append(conditions, Condition{
-			Signal:   condition.Signal,
-			Operator: condition.Operator,
-			Value:    condition.Value,
-		})
-	}
-
-	return Query{Conditions: conditions, Limit: presetQuery.Limit}, nil
 }
