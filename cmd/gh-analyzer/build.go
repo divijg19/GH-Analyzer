@@ -14,11 +14,16 @@ import (
 func runBuild(args []string) error {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() { printBuildHelp(fs.Output()) }
 	filePath := fs.String("file", "", "path to username list file")
 	outPath := fs.String("out", "", "output dataset path")
 
-	if err := fs.Parse(args); err != nil {
+	stop, err := parseFlagsOrHelp(fs, args)
+	if err != nil {
 		return err
+	}
+	if stop {
+		return nil
 	}
 
 	usernames, err := collectUsernames(fs.Args(), *filePath)

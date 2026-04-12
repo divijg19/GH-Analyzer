@@ -15,10 +15,16 @@ import (
 func runInspect(args []string) error {
 	fs := flag.NewFlagSet("inspect", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() { printInspectHelp(fs.Output()) }
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
+	jsonOutput := fs.Bool("json", false, "output JSON")
 
-	if err := fs.Parse(args); err != nil {
+	stop, err := parseFlagsOrHelp(fs, args)
+	if err != nil {
 		return err
+	}
+	if stop {
+		return nil
 	}
 
 	if len(fs.Args()) < 1 {
@@ -41,6 +47,9 @@ func runInspect(args []string) error {
 	profile, found := findProfile(indexData, username)
 	if !found {
 		return fmt.Errorf("profile %q not found", username)
+	}
+	if *jsonOutput {
+		return writeJSON(profile)
 	}
 
 	fmt.Printf("Profile: %s\n", profile.Username)

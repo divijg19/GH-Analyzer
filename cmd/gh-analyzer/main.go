@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -12,30 +14,11 @@ const (
 	defaultDatasetPath           = "dataset.json"
 	defaultQueryLimit            = 10
 	defaultQueryPreset           = "strong"
+	cliVersion                   = "v0.5.3"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-
-	command := strings.TrimSpace(os.Args[1])
-	args := os.Args[2:]
-
-	var err error
-	switch command {
-	case "build":
-		err = runBuild(args)
-	case "query":
-		err = runQuery(args)
-	case "inspect":
-		err = runInspect(args)
-	case "dataset":
-		err = runDataset(args)
-	default:
-		err = runAnalyze(command)
-	}
+	err := runCLI(os.Args[1:])
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -43,14 +26,42 @@ func main() {
 	}
 }
 
-func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("  gh-analyzer <username>")
-	fmt.Println("  gh-analyzer build user1 user2 [--file users.txt] [--out dataset.json]")
-	fmt.Println("  gh-analyzer query [--consistency 0.7] [--ownership 0.6] [--depth 0.5] [--limit 10] [--dataset dataset.json] [--preset strong] [expression]")
-	fmt.Println("  gh-analyzer inspect username [--dataset dataset.json]")
-	fmt.Println("  gh-analyzer dataset [--dataset dataset.json]")
-	fmt.Println("  build saves to dataset.json by default")
+func runCLI(args []string) error {
+	if len(args) == 0 {
+		printRootHelp(os.Stdout)
+		return fmt.Errorf("missing command or username")
+	}
+
+	first := strings.TrimSpace(args[0])
+	rest := args[1:]
+
+	switch first {
+	case "--help", "-h", "help":
+		if len(rest) > 0 {
+			return printCommandHelp(rest[0], os.Stdout)
+		}
+		printRootHelp(os.Stdout)
+		return nil
+	case "--version", "version":
+		fmt.Println(cliVersion)
+		return nil
+	case "build":
+		return runBuild(rest)
+	case "query":
+		return runQuery(rest)
+	case "inspect":
+		return runInspect(rest)
+	case "dataset":
+		return runDataset(rest)
+	case "analyze":
+		return runAnalyze(rest)
+	default:
+		// Backward-compatible mode: treat first positional token as username.
+		if strings.HasPrefix(first, "-") {
+			return fmt.Errorf("unknown global option %q", first)
+		}
+		return runAnalyze(args)
+	}
 }
 
 func missingDatasetError(path string) error {
@@ -59,4 +70,15 @@ func missingDatasetError(path string) error {
 	}
 
 	return fmt.Errorf("dataset %q not found. Run: gh-analyzer build <usernames> --out %s", path, path)
+}
+
+func parseFlagsOrHelp(fs *flag.FlagSet, args []string) (bool, error) {
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	return false, nil
 }

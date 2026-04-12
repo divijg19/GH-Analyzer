@@ -1,14 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
 )
 
+func writeJSON(value any) error {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
 func printFilters(query engine.Query, presetName string, limit int) {
-	fmt.Println("Filters")
+	fmt.Println("Filters:")
 	if presetName != "" {
 		fmt.Printf("Preset: %s\n", presetName)
 	}
@@ -30,7 +41,7 @@ func printMatchSummary(totalMatches, shownCount, limit int) {
 }
 
 func printTopMatches(results []engine.Result) {
-	fmt.Println("Top matches")
+	fmt.Println("Top Matches:")
 	fmt.Println()
 
 	if len(results) == 0 {
@@ -40,7 +51,7 @@ func printTopMatches(results []engine.Result) {
 
 	for i, result := range results {
 		fmt.Printf("%d. %s - %.2f\n", i+1, result.Profile.Username, result.Score)
-		fmt.Println("   Why")
+		fmt.Println("   Why:")
 		for _, reason := range result.Reasons {
 			fmt.Printf("   - %s\n", reason)
 		}
@@ -57,7 +68,7 @@ func printAverageSignals(indexData indexpkg.Index) {
 func printDatasetSummary(path string, indexData indexpkg.Index) {
 	averages := calculateAverageSignals(indexData)
 
-	fmt.Println("Dataset")
+	fmt.Println("Dataset:")
 	fmt.Printf("Path: %s\n", path)
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
 	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
