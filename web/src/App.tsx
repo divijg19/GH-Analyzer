@@ -1,4 +1,10 @@
-import { createSignal, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+	Show,
+} from "solid-js";
 import { fetchReport, type Report } from "./api/client";
 import Results from "./components/Results";
 import SearchBar from "./components/SearchBar";
@@ -19,11 +25,57 @@ export default function App() {
 	const [loading, setLoading] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
 	const [result, setResult] = createSignal<Report | null>(null);
+	const [loadingMessageIndex, setLoadingMessageIndex] = createSignal(0);
+	const [stateVisible, setStateVisible] = createSignal(false);
+	let mainRef: HTMLDivElement | undefined;
+
+	const currentState = createMemo(() => {
+		if (loading()) return "loading";
+		if (error()) return "error";
+		if (result()) return "result";
+		return "empty";
+	});
+
+	const loadingMessage = createMemo(() => {
+		const messages = [
+			`Analyzing "${username()}"...`,
+			"Fetching repositories...",
+			"Computing signals...",
+		];
+
+		return messages[loadingMessageIndex() % messages.length];
+	});
+
+	createEffect(() => {
+		if (!loading()) {
+			setLoadingMessageIndex(0);
+			return;
+		}
+
+		const interval = setInterval(() => {
+			setLoadingMessageIndex((value) => value + 1);
+		}, 700);
+
+		onCleanup(() => clearInterval(interval));
+	});
+
+	createEffect(() => {
+		currentState();
+		setStateVisible(false);
+
+		const frame = requestAnimationFrame(() => {
+			setStateVisible(true);
+		});
+
+		onCleanup(() => cancelAnimationFrame(frame));
+	});
 
 	const analyze = async () => {
 		if (loading()) {
 			return;
 		}
+
+		mainRef?.scrollTo({ top: 0 });
 
 		const value = username().trim();
 		setUsername(value);
@@ -36,6 +88,7 @@ export default function App() {
 
 		setError(null);
 		setResult(null);
+		setLoadingMessageIndex(0);
 		setLoading(true);
 
 		try {
@@ -87,36 +140,69 @@ export default function App() {
 				</header>
 
 				<div class="mx-auto mt-6 flex min-h-0 w-full max-w-6xl flex-1 gap-6 overflow-hidden">
-					<aside class="w-64 self-start rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-400 shadow-sm">
+					<aside class="w-64 self-start rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-400 shadow-sm transition-colors duration-150 hover:bg-gray-50">
 						<p>Filters (coming soon)</p>
 					</aside>
 
-					<main class="mx-auto h-full min-h-0 max-w-3xl flex-1 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 shadow-md">
+					<main
+						ref={mainRef}
+						class="mx-auto h-full min-h-0 max-w-3xl flex-1 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 shadow-sm transition-shadow duration-150 hover:shadow-md"
+					>
 						<Show when={loading()}>
-							<div class="flex min-h-96 items-center justify-center py-4">
+							<div
+								class="flex h-full items-center justify-center py-4 transition-opacity duration-150"
+								classList={{
+									"opacity-100": stateVisible(),
+									"opacity-0": !stateVisible(),
+								}}
+							>
 								<div class="flex flex-col items-center gap-3 text-gray-600">
 									<span class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
-									<p>Analyzing "{username()}"...</p>
+									<p class="text-sm">{loadingMessage()}</p>
 								</div>
 							</div>
 						</Show>
 
 						<Show when={!loading() && error()}>
 							{(message) => (
-								<div class="flex min-h-96 items-center justify-center py-4">
-									<p class="text-red-500">❌ {message()}</p>
+								<div
+									class="flex h-full items-center justify-center py-4 transition-opacity duration-150"
+									classList={{
+										"opacity-100": stateVisible(),
+										"opacity-0": !stateVisible(),
+									}}
+								>
+									<p class="text-sm text-red-500">❌ {message()}</p>
 								</div>
 							)}
 						</Show>
 
 						<Show when={!loading() && !error() && !result()}>
-							<div class="flex min-h-96 items-center justify-center py-4 text-gray-500">
-								<p>Search for a GitHub user to begin analysis</p>
+							<div
+								class="flex h-full items-center justify-center py-4 text-gray-500 transition-opacity duration-150"
+								classList={{
+									"opacity-100": stateVisible(),
+									"opacity-0": !stateVisible(),
+								}}
+							>
+								<p class="text-sm">
+									Search for a GitHub user to begin analysis
+								</p>
 							</div>
 						</Show>
 
 						<Show when={!loading() && result()}>
-							{(report) => <Results report={report()} />}
+							{(report) => (
+								<div
+									class="transition-opacity duration-150"
+									classList={{
+										"opacity-100": stateVisible(),
+										"opacity-0": !stateVisible(),
+									}}
+								>
+									<Results report={report()} />
+								</div>
+							)}
 						</Show>
 					</main>
 				</div>

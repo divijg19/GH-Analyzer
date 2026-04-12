@@ -29,12 +29,12 @@ export default function SearchBar(props: SearchBarProps) {
 				value={props.username}
 				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
 				disabled={props.loading}
-				class="w-full flex-1 rounded-md border border-gray-200 px-5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/20"
+				class="w-full flex-1 rounded-md border border-gray-200 px-5 py-2 text-sm transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
 			/>
 			<button
 				type="submit"
 				disabled={isDisabled()}
-				class="rounded-md bg-black px-4 py-2.5 text-white hover:bg-black/90 disabled:opacity-50"
+				class="cursor-pointer rounded-md bg-black px-4 py-2.5 text-white transition-all duration-150 hover:bg-black/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				Analyze
 			</button>
