@@ -15,6 +15,7 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "  analyze  Analyze a single GitHub profile")
 	fmt.Fprintln(w, "  build    Build a dataset from usernames")
 	fmt.Fprintln(w, "  query    Query a dataset by signal thresholds")
+	fmt.Fprintln(w, "  search   Discover developers by intent or expression")
 	fmt.Fprintln(w, "  inspect  Inspect a single profile in a dataset")
 	fmt.Fprintln(w, "  dataset  Show dataset summary")
 	fmt.Fprintln(w)
@@ -27,7 +28,9 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh-analyzer analyze --json kamikuma")
 	fmt.Fprintln(w, "  gh-analyzer build user1 user2 --out dataset.json")
 	fmt.Fprintln(w, "  gh-analyzer query --preset strong --limit 5")
+	fmt.Fprintln(w, "  gh-analyzer search backend")
 	fmt.Fprintln(w, "  gh-analyzer inspect octocat --dataset dataset.json")
+	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset dataset.json")
 }
 
@@ -79,6 +82,7 @@ func printInspectHelp(w io.Writer) {
 func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh-analyzer dataset [--dataset dataset.json] [--json]")
+	fmt.Fprintln(w, "  gh-analyzer dataset stats [--dataset dataset.json]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Options:")
 	fmt.Fprintln(w, "  --dataset string  Dataset file (default: dataset.json)")
@@ -86,7 +90,25 @@ func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  gh-analyzer dataset")
+	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset team.json")
+}
+
+func printSearchHelp(w io.Writer) {
+	fmt.Fprintln(w, "Usage:")
+	fmt.Fprintln(w, "  gh-analyzer search [input]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Options:")
+	fmt.Fprintln(w, "  --preset string   Preset: strong, consistent, deep")
+	fmt.Fprintln(w, "  --limit int       Max results (default: 10)")
+	fmt.Fprintln(w, "  --dataset string  Dataset file (default: dataset.json)")
+	fmt.Fprintln(w, "  --json            Output JSON")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Examples:")
+	fmt.Fprintln(w, "  gh-analyzer search backend")
+	fmt.Fprintln(w, "  gh-analyzer search --preset strong")
+	fmt.Fprintln(w, "  gh-analyzer search \"consistency > 0.7 AND depth > 0.6\"")
+	fmt.Fprintln(w, "  gh-analyzer search active --json")
 }
 
 func printAnalyzeHelp(w io.Writer) {
@@ -111,6 +133,8 @@ func printCommandHelp(command string, w io.Writer) error {
 		printBuildHelp(w)
 	case "query":
 		printQueryHelp(w)
+	case "search":
+		printSearchHelp(w)
 	case "inspect":
 		printInspectHelp(w)
 	case "dataset":
