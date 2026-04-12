@@ -1,4 +1,9 @@
-package ghanalyzer
+package index
+
+type Profile struct {
+	Username string             `json:"username"`
+	Signals  map[string]float64 `json:"signals"`
+}
 
 type Index struct {
 	Profiles []Profile `json:"profiles"`

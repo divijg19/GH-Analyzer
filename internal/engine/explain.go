@@ -1,11 +1,13 @@
-package ghanalyzer
+package engine
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
 )
 
-func Explain(p Profile, q Query) []string {
+func Explain(p index.Profile, q Query) []string {
 	if len(q.Conditions) == 0 {
 		return []string{"Ranked by overall signal strength"}
 	}

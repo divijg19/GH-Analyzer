@@ -1,9 +1,13 @@
-package ghanalyzer
+package engine
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
+)
 
 func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
-	profile := Profile{Signals: map[string]float64{
+	profile := index.Profile{Signals: map[string]float64{
 		"consistency": 0.87,
 		"ownership":   0.75,
 	}}
@@ -28,7 +32,7 @@ func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
 }
 
 func TestExplainNoConditions(t *testing.T) {
-	reasons := Explain(Profile{}, Query{})
+	reasons := Explain(index.Profile{}, Query{})
 	if len(reasons) != 1 {
 		t.Fatalf("expected 1 reason, got %d", len(reasons))
 	}

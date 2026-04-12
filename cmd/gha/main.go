@@ -6,7 +6,7 @@ import (
 	"math"
 	"os"
 
-	ghanalyzer "github.com/divijg19/GH-Analyzer"
+	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 const (
@@ -22,19 +22,19 @@ func main() {
 
 	username := os.Args[1]
 
-	repos, err := ghanalyzer.FetchRepos(username)
+	repos, err := signals.FetchRepos(username)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	signals := ghanalyzer.ExtractSignals(repos)
+	signalValues := signals.ExtractSignals(repos)
 
-	scores := ghanalyzer.ScoreSignals(signals)
+	scores := signals.ScoreSignals(signalValues)
 	if len(repos) < minReposForFullScore {
 		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
 	}
-	report := ghanalyzer.BuildReport(username, scores, repos)
+	report := signals.BuildReport(username, scores, repos)
 
 	output, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {

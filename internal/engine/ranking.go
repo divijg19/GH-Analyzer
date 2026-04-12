@@ -1,4 +1,6 @@
-package ghanalyzer
+package engine
+
+import "github.com/divijg19/GH-Analyzer/internal/index"
 
 func defaultRankingWeights() map[string]float64 {
 	return map[string]float64{
@@ -9,14 +11,14 @@ func defaultRankingWeights() map[string]float64 {
 }
 
 type RankingStrategy interface {
-	Score(Profile) float64
+	Score(index.Profile) float64
 }
 
 type WeightedRanking struct {
 	Weights map[string]float64
 }
 
-func (w WeightedRanking) Score(p Profile) float64 {
+func (w WeightedRanking) Score(p index.Profile) float64 {
 	weights := w.Weights
 	if len(weights) == 0 {
 		weights = defaultRankingWeights()

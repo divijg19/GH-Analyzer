@@ -13,7 +13,10 @@ import (
 	"strconv"
 	"strings"
 
-	ghanalyzer "github.com/divijg19/GH-Analyzer"
+	"github.com/divijg19/GH-Analyzer/internal/engine"
+	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/signals"
+	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
 
 const (
@@ -58,18 +61,18 @@ func runAnalyze(username string) error {
 		return fmt.Errorf("missing GitHub username")
 	}
 
-	repos, err := ghanalyzer.FetchRepos(username)
+	repos, err := signals.FetchRepos(username)
 	if err != nil {
 		return err
 	}
 
-	signals := ghanalyzer.ExtractSignals(repos)
+	signalValues := signals.ExtractSignals(repos)
 
-	scores := ghanalyzer.ScoreSignals(signals)
+	scores := signals.ScoreSignals(signalValues)
 	if len(repos) < minReposForFullScore {
 		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
 	}
-	report := ghanalyzer.BuildReport(username, scores, repos)
+	report := signals.BuildReport(username, scores, repos)
 
 	output, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -96,20 +99,20 @@ func runBuild(args []string) error {
 		return err
 	}
 
-	idx, err := ghanalyzer.Build(usernames)
+	indexData, err := indexpkg.Build(usernames)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Built index with %d profiles\n", len(idx.All()))
-	printAverageSignals(idx)
+	fmt.Printf("Built index with %d profiles\n", len(indexData.All()))
+	printAverageSignals(indexData)
 
 	resolvedOutPath := strings.TrimSpace(*outPath)
 	if resolvedOutPath == "" {
 		resolvedOutPath = defaultDatasetPath
 	}
 
-	if err := ghanalyzer.Save(resolvedOutPath, idx); err != nil {
+	if err := storage.Save(resolvedOutPath, indexData); err != nil {
 		return err
 	}
 	fmt.Printf("Saved to %s\n", resolvedOutPath)
@@ -131,7 +134,7 @@ func runQuery(args []string) error {
 		return err
 	}
 
-	idx, err := ghanalyzer.Load(*datasetPath)
+	indexData, err := storage.Load(*datasetPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return missingDatasetError(*datasetPath)
@@ -139,10 +142,10 @@ func runQuery(args []string) error {
 		return err
 	}
 
-	conditions := make([]ghanalyzer.Condition, 0, 8)
+	conditions := make([]engine.Condition, 0, 8)
 
 	if strings.TrimSpace(*presetName) != "" {
-		preset, err := ghanalyzer.Preset(strings.ToLower(strings.TrimSpace(*presetName)))
+		preset, err := engine.QueryFromPreset(strings.ToLower(strings.TrimSpace(*presetName)))
 		if err != nil {
 			return fmt.Errorf("invalid preset: %w", err)
 		}
@@ -154,21 +157,21 @@ func runQuery(args []string) error {
 		if err != nil {
 			return fmt.Errorf("invalid --consistency: %w", err)
 		}
-		conditions = append(conditions, ghanalyzer.Condition{Signal: "consistency", Operator: ">=", Value: value})
+		conditions = append(conditions, engine.Condition{Signal: "consistency", Operator: ">=", Value: value})
 	}
 	if *ownership >= 0 {
 		value, err := normalizeThreshold(*ownership)
 		if err != nil {
 			return fmt.Errorf("invalid --ownership: %w", err)
 		}
-		conditions = append(conditions, ghanalyzer.Condition{Signal: "ownership", Operator: ">=", Value: value})
+		conditions = append(conditions, engine.Condition{Signal: "ownership", Operator: ">=", Value: value})
 	}
 	if *depth >= 0 {
 		value, err := normalizeThreshold(*depth)
 		if err != nil {
 			return fmt.Errorf("invalid --depth: %w", err)
 		}
-		conditions = append(conditions, ghanalyzer.Condition{Signal: "depth", Operator: ">=", Value: value})
+		conditions = append(conditions, engine.Condition{Signal: "depth", Operator: ">=", Value: value})
 	}
 
 	expression := strings.TrimSpace(strings.Join(fs.Args(), " "))
@@ -181,7 +184,7 @@ func runQuery(args []string) error {
 	}
 
 	if len(conditions) == 0 {
-		preset, err := ghanalyzer.Preset(defaultQueryPreset)
+		preset, err := engine.QueryFromPreset(defaultQueryPreset)
 		if err != nil {
 			return err
 		}
@@ -192,8 +195,9 @@ func runQuery(args []string) error {
 		return fmt.Errorf("invalid --limit: must be >= 0")
 	}
 
-	query := ghanalyzer.Query{Conditions: conditions, Limit: *limit}
-	results := ghanalyzer.Execute(idx, query, ghanalyzer.WeightedRanking{})
+	query := engine.Query{Conditions: conditions, Limit: *limit}
+	runner := engine.New(engine.WeightedRanking{})
+	results := runner.Query(indexData, query)
 
 	printFilters(query)
 	fmt.Printf("Matches: %d\n\n", len(results))
@@ -220,7 +224,7 @@ func runInspect(args []string) error {
 		return fmt.Errorf("username is required")
 	}
 
-	idx, err := ghanalyzer.Load(*datasetPath)
+	indexData, err := storage.Load(*datasetPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return missingDatasetError(*datasetPath)
@@ -228,7 +232,7 @@ func runInspect(args []string) error {
 		return err
 	}
 
-	profile, found := findProfile(idx, username)
+	profile, found := findProfile(indexData, username)
 	if !found {
 		return fmt.Errorf("profile %q not found", username)
 	}
@@ -300,9 +304,9 @@ func normalizeThreshold(value float64) (float64, error) {
 	return value, nil
 }
 
-func parseExpression(expression string) ([]ghanalyzer.Condition, error) {
+func parseExpression(expression string) ([]engine.Condition, error) {
 	parts := andSplitter.Split(expression, -1)
-	conditions := make([]ghanalyzer.Condition, 0, len(parts))
+	conditions := make([]engine.Condition, 0, len(parts))
 
 	for _, part := range parts {
 		trimmed := strings.TrimSpace(part)
@@ -320,7 +324,7 @@ func parseExpression(expression string) ([]ghanalyzer.Condition, error) {
 	return conditions, nil
 }
 
-func parseCondition(raw string) (ghanalyzer.Condition, error) {
+func parseCondition(raw string) (engine.Condition, error) {
 	text := strings.TrimSpace(raw)
 	operators := []string{">=", "<=", ">", "<"}
 
@@ -332,30 +336,30 @@ func parseCondition(raw string) (ghanalyzer.Condition, error) {
 
 		signal := strings.ToLower(strings.TrimSpace(text[:idx]))
 		if signal == "" {
-			return ghanalyzer.Condition{}, fmt.Errorf("invalid condition %q: missing signal before operator", raw)
+			return engine.Condition{}, fmt.Errorf("invalid condition %q: missing signal before operator", raw)
 		}
 		if !isAllowedSignal(signal) {
-			return ghanalyzer.Condition{}, fmt.Errorf("invalid signal %q; expected consistency, ownership, depth, or activity", signal)
+			return engine.Condition{}, fmt.Errorf("invalid signal %q; expected consistency, ownership, depth, or activity", signal)
 		}
 
 		valueText := strings.TrimSpace(text[idx+len(operator):])
 		if valueText == "" {
-			return ghanalyzer.Condition{}, fmt.Errorf("invalid condition %q: missing value after operator", raw)
+			return engine.Condition{}, fmt.Errorf("invalid condition %q: missing value after operator", raw)
 		}
 		value, err := strconv.ParseFloat(valueText, 64)
 		if err != nil {
-			return ghanalyzer.Condition{}, fmt.Errorf("invalid condition %q: value must be a number", raw)
+			return engine.Condition{}, fmt.Errorf("invalid condition %q: value must be a number", raw)
 		}
 
 		normalized, err := normalizeThreshold(value)
 		if err != nil {
-			return ghanalyzer.Condition{}, fmt.Errorf("invalid condition %q: %w", raw, err)
+			return engine.Condition{}, fmt.Errorf("invalid condition %q: %w", raw, err)
 		}
 
-		return ghanalyzer.Condition{Signal: signal, Operator: operator, Value: normalized}, nil
+		return engine.Condition{Signal: signal, Operator: operator, Value: normalized}, nil
 	}
 
-	return ghanalyzer.Condition{}, fmt.Errorf("invalid condition %q; supported operators are >, >=, <, <=", raw)
+	return engine.Condition{}, fmt.Errorf("invalid condition %q; supported operators are >, >=, <, <=", raw)
 }
 
 func isAllowedSignal(signal string) bool {
@@ -367,7 +371,7 @@ func isAllowedSignal(signal string) bool {
 	}
 }
 
-func printFilters(query ghanalyzer.Query) {
+func printFilters(query engine.Query) {
 	fmt.Println("Filters:")
 	for _, condition := range query.Conditions {
 		fmt.Printf("- %s %s %.2f\n", condition.Signal, condition.Operator, condition.Value)
@@ -375,7 +379,7 @@ func printFilters(query ghanalyzer.Query) {
 	fmt.Println()
 }
 
-func printTopMatches(results []ghanalyzer.Result) {
+func printTopMatches(results []engine.Result) {
 	fmt.Println("Top matches")
 	fmt.Println()
 
@@ -394,8 +398,8 @@ func printTopMatches(results []ghanalyzer.Result) {
 	}
 }
 
-func printAverageSignals(idx ghanalyzer.Index) {
-	profiles := idx.All()
+func printAverageSignals(indexData indexpkg.Index) {
+	profiles := indexData.All()
 	if len(profiles) == 0 {
 		fmt.Println("avg consistency: 0.00")
 		fmt.Println("avg ownership: 0.00")
@@ -415,14 +419,14 @@ func printAverageSignals(idx ghanalyzer.Index) {
 	fmt.Printf("avg ownership: %.2f\n", sumOwnership/count)
 }
 
-func findProfile(idx ghanalyzer.Index, username string) (ghanalyzer.Profile, bool) {
-	for _, profile := range idx.All() {
+func findProfile(indexData indexpkg.Index, username string) (indexpkg.Profile, bool) {
+	for _, profile := range indexData.All() {
 		if strings.EqualFold(profile.Username, username) {
 			return profile, true
 		}
 	}
 
-	return ghanalyzer.Profile{}, false
+	return indexpkg.Profile{}, false
 }
 
 func printUsage() {

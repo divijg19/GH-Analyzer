@@ -1,9 +1,13 @@
-package ghanalyzer
+package engine
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
+)
 
 func TestMatchOperators(t *testing.T) {
-	profile := Profile{Signals: map[string]float64{"consistency": 0.7}}
+	profile := index.Profile{Signals: map[string]float64{"consistency": 0.7}}
 
 	tests := []struct {
 		name string
@@ -29,7 +33,7 @@ func TestMatchOperators(t *testing.T) {
 }
 
 func TestMatchEdgeCases(t *testing.T) {
-	profile := Profile{Signals: map[string]float64{"consistency": 0.7}}
+	profile := index.Profile{Signals: map[string]float64{"consistency": 0.7}}
 
 	if Match(profile, Condition{Signal: "ownership", Operator: ">=", Value: 0.5}) {
 		t.Fatal("expected false for missing signal")

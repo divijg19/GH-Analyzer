@@ -1,6 +1,10 @@
-package ghanalyzer
+package engine
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
+)
 
 type Query struct {
 	Conditions []Condition
@@ -13,7 +17,7 @@ type Condition struct {
 	Value    float64
 }
 
-func Match(p Profile, c Condition) bool {
+func Match(p index.Profile, c Condition) bool {
 	signal := strings.ToLower(strings.TrimSpace(c.Signal))
 	signalValue, ok := p.Signals[signal]
 	if !ok {

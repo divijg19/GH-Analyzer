@@ -1,9 +1,13 @@
-package ghanalyzer
+package engine
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/divijg19/GH-Analyzer/internal/index"
+)
 
 func TestExecuteFilteringAndRanking(t *testing.T) {
-	idx := Index{Profiles: []Profile{
+	idx := index.Index{Profiles: []index.Profile{
 		{Username: "alice", Signals: map[string]float64{"consistency": 0.9, "ownership": 0.8, "depth": 0.7}},
 		{Username: "bob", Signals: map[string]float64{"consistency": 0.6, "ownership": 0.9, "depth": 0.8}},
 		{Username: "cara", Signals: map[string]float64{"consistency": 0.85, "ownership": 0.4, "depth": 0.9}},
@@ -28,7 +32,7 @@ func TestExecuteFilteringAndRanking(t *testing.T) {
 }
 
 func TestExecuteTieBreakByUsername(t *testing.T) {
-	idx := Index{Profiles: []Profile{
+	idx := index.Index{Profiles: []index.Profile{
 		{Username: "zoe", Signals: map[string]float64{"consistency": 0.5, "ownership": 0.5, "depth": 0.5}},
 		{Username: "amy", Signals: map[string]float64{"consistency": 0.5, "ownership": 0.5, "depth": 0.5}},
 	}}
@@ -45,7 +49,7 @@ func TestExecuteTieBreakByUsername(t *testing.T) {
 }
 
 func TestExecuteLimit(t *testing.T) {
-	idx := Index{Profiles: []Profile{
+	idx := index.Index{Profiles: []index.Profile{
 		{Username: "a", Signals: map[string]float64{"consistency": 0.9, "ownership": 0.9, "depth": 0.9}},
 		{Username: "b", Signals: map[string]float64{"consistency": 0.8, "ownership": 0.8, "depth": 0.8}},
 		{Username: "c", Signals: map[string]float64{"consistency": 0.7, "ownership": 0.7, "depth": 0.7}},

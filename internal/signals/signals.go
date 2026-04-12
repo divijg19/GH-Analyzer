@@ -1,9 +1,4 @@
-package ghanalyzer
-
-type Profile struct {
-	Username string             `json:"username"`
-	Signals  map[string]float64 `json:"signals"`
-}
+package signals
 
 func SignalsFromReport(report Report) map[string]float64 {
 	consistency := clamp01(float64(report.Scores.Consistency) / scoreScale)
