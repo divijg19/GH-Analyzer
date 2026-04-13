@@ -1,14 +1,12 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	searchpkg "github.com/divijg19/GH-Analyzer/internal/search"
-	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
 
 func runSearch(args []string) error {
@@ -33,11 +31,8 @@ func runSearch(args []string) error {
 		return fmt.Errorf("search input is required")
 	}
 
-	indexData, err := storage.Load(*datasetPath)
+	indexData, err := loadDataset(*datasetPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return missingDatasetError(*datasetPath)
-		}
 		return err
 	}
 

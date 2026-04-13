@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
@@ -42,7 +43,7 @@ func printMatchSummary(totalMatches, shownCount, limit int) {
 }
 
 func printTopMatches(results []engine.Result) {
-	fmt.Println("Top Matches:")
+	fmt.Println("Top candidates")
 	fmt.Println()
 
 	if len(results) == 0 {
@@ -76,6 +77,26 @@ func printTopCandidates(results []engine.Result) {
 			fmt.Printf("   - %s\n", reason)
 		}
 		fmt.Println()
+	}
+}
+
+func printDatasetInfo(path string, indexData indexpkg.Index) {
+	fmt.Printf("Dataset: %s\n", path)
+	fmt.Printf("Profiles: %d\n", len(indexData.All()))
+}
+
+func printProfileSignals(profile indexpkg.Profile) {
+	fmt.Printf("Profile: %s\n", profile.Username)
+	fmt.Println("Signals:")
+
+	names := make([]string, 0, len(profile.Signals))
+	for name := range profile.Signals {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		fmt.Printf("- %s: %.2f\n", name, profile.Signals[name])
 	}
 }
 

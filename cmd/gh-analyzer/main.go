@@ -14,7 +14,7 @@ const (
 	defaultDatasetPath           = "dataset.json"
 	defaultQueryLimit            = 10
 	defaultQueryPreset           = "strong"
-	cliVersion                   = "v0.6.1"
+	cliVersion                   = "v0.6.2"
 )
 
 func main() {
@@ -68,10 +68,10 @@ func runCLI(args []string) error {
 
 func missingDatasetError(path string) error {
 	if path == defaultDatasetPath {
-		return fmt.Errorf("dataset %q not found. Run: gh-analyzer build <usernames>", path)
+		return fmt.Errorf("dataset not found\nRun: gh-analyzer build <usernames>")
 	}
 
-	return fmt.Errorf("dataset %q not found. Run: gh-analyzer build <usernames> --out %s", path, path)
+	return fmt.Errorf("dataset not found: %s\nRun: gh-analyzer build <usernames> --out %s", path, path)
 }
 
 func parseFlagsOrHelp(fs *flag.FlagSet, args []string) (bool, error) {

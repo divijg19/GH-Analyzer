@@ -1,15 +1,12 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
-	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
 
 func runInspect(args []string) error {
@@ -36,11 +33,8 @@ func runInspect(args []string) error {
 		return fmt.Errorf("username is required")
 	}
 
-	indexData, err := storage.Load(*datasetPath)
+	indexData, err := loadDataset(*datasetPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return missingDatasetError(*datasetPath)
-		}
 		return err
 	}
 
@@ -51,19 +45,7 @@ func runInspect(args []string) error {
 	if *jsonOutput {
 		return writeJSON(profile)
 	}
-
-	fmt.Printf("Profile: %s\n", profile.Username)
-	fmt.Println("Signals:")
-
-	names := make([]string, 0, len(profile.Signals))
-	for name := range profile.Signals {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	for _, name := range names {
-		fmt.Printf("- %s: %.2f\n", name, profile.Signals[name])
-	}
+	printProfileSignals(profile)
 
 	return nil
 }
