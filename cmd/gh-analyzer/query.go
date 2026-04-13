@@ -22,9 +22,11 @@ func runQuery(args []string) error {
 	ownership := fs.Float64("ownership", -1, "ownership threshold")
 	depth := fs.Float64("depth", -1, "depth threshold")
 	limit := fs.Int("limit", defaultQueryLimit, "max results")
+	kLimit := fs.Int("k", defaultQueryLimit, "max results (alias)")
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
 	presetName := fs.String("preset", "", "preset name: strong, consistent, deep")
 	jsonOutput := fs.Bool("json", false, "output JSON")
+	compactOutput := fs.Bool("compact", false, "compact output (no explanations)")
 
 	stop, err := parseFlagsOrHelp(fs, args)
 	if err != nil {
@@ -90,7 +92,12 @@ func runQuery(args []string) error {
 		conditions = append(conditions, presetConditions...)
 	}
 
-	if *limit < 0 {
+	resolvedLimit, err := resolveLimitFlag(fs, *limit, *kLimit)
+	if err != nil {
+		return err
+	}
+
+	if resolvedLimit < 0 {
 		return fmt.Errorf("invalid --limit: must be >= 0")
 	}
 
@@ -99,15 +106,19 @@ func runQuery(args []string) error {
 	totalMatches := len(runner.Query(indexData, fullQuery))
 
 	query := fullQuery
-	query.Limit = *limit
+	query.Limit = resolvedLimit
 	results := runner.Query(indexData, query)
 	if *jsonOutput {
 		return writeJSON(results)
 	}
 
-	printFilters(query, activePreset, *limit)
-	printMatchSummary(totalMatches, len(results), *limit)
-	printTopMatches(results)
+	printFilters(query, activePreset, resolvedLimit)
+	printMatchSummary(totalMatches, len(results), resolvedLimit)
+	if *compactOutput {
+		printCompactResults(results)
+	} else {
+		printTopMatches(results)
+	}
 
 	return nil
 }

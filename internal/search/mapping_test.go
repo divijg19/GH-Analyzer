@@ -95,3 +95,44 @@ func TestMapIntentMalformedConditionError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestMapIntentFrontendKeyword(t *testing.T) {
+	query, err := MapIntent("frontend")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(query.Conditions) != 1 {
+		t.Fatalf("expected 1 condition, got %d", len(query.Conditions))
+	}
+	condition := query.Conditions[0]
+	if condition.Signal != "depth" || condition.Operator != ">=" || condition.Value != 0.5 {
+		t.Fatalf("unexpected condition: %+v", condition)
+	}
+}
+
+func TestMapIntentReliableKeyword(t *testing.T) {
+	query, err := MapIntent("reliable")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(query.Conditions) != 2 {
+		t.Fatalf("expected 2 conditions, got %d", len(query.Conditions))
+	}
+}
+
+func TestMapIntentBeginnerKeyword(t *testing.T) {
+	query, err := MapIntent("beginner")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(query.Conditions) != 1 {
+		t.Fatalf("expected 1 condition, got %d", len(query.Conditions))
+	}
+	condition := query.Conditions[0]
+	if condition.Signal != "depth" || condition.Operator != "<=" || condition.Value != 0.4 {
+		t.Fatalf("unexpected condition: %+v", condition)
+	}
+}

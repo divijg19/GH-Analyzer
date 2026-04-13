@@ -14,6 +14,9 @@ func runDataset(args []string) error {
 	if len(args) > 0 && strings.EqualFold(strings.TrimSpace(args[0]), "info") {
 		return runDatasetInfo(args[1:])
 	}
+	if len(args) > 0 && strings.EqualFold(strings.TrimSpace(args[0]), "preview") {
+		return runDatasetPreview(args[1:])
+	}
 
 	fs := flag.NewFlagSet("dataset", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -90,5 +93,31 @@ func runDatasetInfo(args []string) error {
 	}
 
 	printDatasetInfo(*datasetPath, indexData)
+	return nil
+}
+
+func runDatasetPreview(args []string) error {
+	fs := flag.NewFlagSet("dataset preview", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	fs.Usage = func() { printDatasetHelp(fs.Output()) }
+	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
+
+	stop, err := parseFlagsOrHelp(fs, args)
+	if err != nil {
+		return err
+	}
+	if stop {
+		return nil
+	}
+	if len(fs.Args()) > 0 {
+		return fmt.Errorf("unexpected dataset preview argument %q", fs.Args()[0])
+	}
+
+	indexData, err := loadDataset(*datasetPath)
+	if err != nil {
+		return err
+	}
+
+	printDatasetPreview(*datasetPath, indexData)
 	return nil
 }

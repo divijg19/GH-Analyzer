@@ -31,6 +31,7 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh-analyzer search backend")
 	fmt.Fprintln(w, "  gh-analyzer inspect octocat --dataset dataset.json")
 	fmt.Fprintln(w, "  gh-analyzer dataset info")
+	fmt.Fprintln(w, "  gh-analyzer dataset preview")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset dataset.json")
 }
@@ -59,13 +60,16 @@ func printQueryHelp(w io.Writer) {
 	fmt.Fprintln(w, "  --depth float        Depth threshold")
 	fmt.Fprintln(w, "  --preset string      Preset: strong, consistent, deep")
 	fmt.Fprintln(w, "  --limit int          Max results (default: 10)")
+	fmt.Fprintln(w, "  -k int               Max results alias")
 	fmt.Fprintln(w, "  --dataset string     Dataset file (default: dataset.json)")
 	fmt.Fprintln(w, "  --json               Output JSON")
+	fmt.Fprintln(w, "  --compact            Compact output (no explanations)")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  gh-analyzer query --preset strong")
 	fmt.Fprintln(w, "  gh-analyzer query consistency>=0.7 AND ownership>=0.6")
 	fmt.Fprintln(w, "  gh-analyzer query --json --limit 5 depth>=0.5")
+	fmt.Fprintln(w, "  gh-analyzer query -k 5 --compact consistency>=0.7")
 }
 
 func printInspectHelp(w io.Writer) {
@@ -85,6 +89,7 @@ func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh-analyzer dataset [--dataset dataset.json] [--json]")
 	fmt.Fprintln(w, "  gh-analyzer dataset info [--dataset dataset.json]")
+	fmt.Fprintln(w, "  gh-analyzer dataset preview [--dataset dataset.json]")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats [--dataset dataset.json]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Options:")
@@ -94,6 +99,7 @@ func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  gh-analyzer dataset")
 	fmt.Fprintln(w, "  gh-analyzer dataset info")
+	fmt.Fprintln(w, "  gh-analyzer dataset preview")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset team.json")
 }
@@ -105,14 +111,17 @@ func printSearchHelp(w io.Writer) {
 	fmt.Fprintln(w, "Options:")
 	fmt.Fprintln(w, "  --preset string   Preset: strong, consistent, deep")
 	fmt.Fprintln(w, "  --limit int       Max results (default: 10)")
+	fmt.Fprintln(w, "  -k int            Max results alias")
 	fmt.Fprintln(w, "  --dataset string  Dataset file (default: dataset.json)")
 	fmt.Fprintln(w, "  --json            Output JSON")
+	fmt.Fprintln(w, "  --compact         Compact output (no explanations)")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  gh-analyzer search backend")
 	fmt.Fprintln(w, "  gh-analyzer search --preset strong")
 	fmt.Fprintln(w, "  gh-analyzer search \"consistency > 0.7 AND depth > 0.6\"")
 	fmt.Fprintln(w, "  gh-analyzer search active --json")
+	fmt.Fprintln(w, "  gh-analyzer search -k 5 --compact systems")
 }
 
 func printAnalyzeHelp(w io.Writer) {
