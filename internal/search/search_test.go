@@ -77,6 +77,35 @@ func TestSearchNormalizationTopScoreIsOne(t *testing.T) {
 	}
 }
 
+func TestSearchMixedInputWorks(t *testing.T) {
+	idx := fixtureIndex()
+
+	results, err := Search(idx, "backend consistency > 0.8")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 mixed-input result, got %d", len(results))
+	}
+	if results[0].Profile.Username != "alice" {
+		t.Fatalf("expected alice, got %q", results[0].Profile.Username)
+	}
+}
+
+func TestSearchUnknownTokensIgnored(t *testing.T) {
+	idx := fixtureIndex()
+
+	results, err := Search(idx, "randomword")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 ranked results for unknown token fallback, got %d", len(results))
+	}
+}
+
 func fixtureIndex() indexpkg.Index {
 	return indexpkg.Index{Profiles: []indexpkg.Profile{
 		{

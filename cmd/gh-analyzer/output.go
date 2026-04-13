@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
@@ -69,7 +70,7 @@ func printTopCandidates(results []engine.Result) {
 	}
 
 	for i, result := range results {
-		fmt.Printf("%d. %s - %.2f\n", i+1, result.Profile.Username, result.Score)
+		fmt.Printf("%d. %s - %.2f (%s)\n", i+1, result.Profile.Username, result.Score, confidenceLabel(result.Score))
 		fmt.Println("   Why:")
 		for _, reason := range result.Reasons {
 			fmt.Printf("   - %s\n", reason)
@@ -79,63 +80,103 @@ func printTopCandidates(results []engine.Result) {
 }
 
 func printAverageSignals(indexData indexpkg.Index) {
-	averages := calculateAverageSignals(indexData)
-	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
-	fmt.Printf("avg ownership: %.2f\n", averages["ownership"])
+	stats := calculateSignalStats(indexData)
+	fmt.Printf("avg consistency: %.2f\n", stats.Avg["consistency"])
+	fmt.Printf("avg ownership: %.2f\n", stats.Avg["ownership"])
 }
 
 func printDatasetSummary(path string, indexData indexpkg.Index) {
-	averages := calculateAverageSignals(indexData)
+	stats := calculateSignalStats(indexData)
 
 	fmt.Println("Dataset:")
 	fmt.Printf("Path: %s\n", path)
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
-	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
-	fmt.Printf("avg ownership: %.2f\n", averages["ownership"])
-	fmt.Printf("avg depth: %.2f\n", averages["depth"])
-	fmt.Printf("avg activity: %.2f\n", averages["activity"])
+	fmt.Printf("avg consistency: %.2f\n", stats.Avg["consistency"])
+	fmt.Printf("avg ownership: %.2f\n", stats.Avg["ownership"])
+	fmt.Printf("avg depth: %.2f\n", stats.Avg["depth"])
+	fmt.Printf("avg activity: %.2f\n", stats.Avg["activity"])
 }
 
 func printDatasetStats(path string, indexData indexpkg.Index) {
-	averages := calculateAverageSignals(indexData)
+	stats := calculateSignalStats(indexData)
 
 	fmt.Printf("Dataset: %s\n", path)
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
 	fmt.Println()
-	fmt.Printf("avg consistency: %.2f\n", averages["consistency"])
-	fmt.Printf("avg ownership:   %.2f\n", averages["ownership"])
-	fmt.Printf("avg depth:       %.2f\n", averages["depth"])
+	printSignalStatBlock("consistency", stats)
+	printSignalStatBlock("ownership", stats)
+	printSignalStatBlock("depth", stats)
+	printSignalStatBlock("activity", stats)
 }
 
-func calculateAverageSignals(indexData indexpkg.Index) map[string]float64 {
+type signalStats struct {
+	Avg map[string]float64
+	Min map[string]float64
+	Max map[string]float64
+}
+
+func calculateSignalStats(indexData indexpkg.Index) signalStats {
+	signals := []string{"consistency", "ownership", "depth", "activity"}
 	profiles := indexData.All()
-	if len(profiles) == 0 {
-		return map[string]float64{
-			"consistency": 0,
-			"ownership":   0,
-			"depth":       0,
-			"activity":    0,
-		}
+
+	stats := signalStats{
+		Avg: map[string]float64{},
+		Min: map[string]float64{},
+		Max: map[string]float64{},
 	}
 
-	sums := map[string]float64{
-		"consistency": 0,
-		"ownership":   0,
-		"depth":       0,
-		"activity":    0,
+	if len(profiles) == 0 {
+		for _, signal := range signals {
+			stats.Avg[signal] = 0
+			stats.Min[signal] = 0
+			stats.Max[signal] = 0
+		}
+
+		return stats
+	}
+
+	sums := map[string]float64{}
+	for _, signal := range signals {
+		sums[signal] = 0
+		stats.Min[signal] = math.MaxFloat64
+		stats.Max[signal] = -math.MaxFloat64
 	}
 
 	for _, profile := range profiles {
-		sums["consistency"] += profile.Signals["consistency"]
-		sums["ownership"] += profile.Signals["ownership"]
-		sums["depth"] += profile.Signals["depth"]
-		sums["activity"] += profile.Signals["activity"]
+		for _, signal := range signals {
+			value := profile.Signals[signal]
+			sums[signal] += value
+			if value < stats.Min[signal] {
+				stats.Min[signal] = value
+			}
+			if value > stats.Max[signal] {
+				stats.Max[signal] = value
+			}
+		}
 	}
 
 	count := float64(len(profiles))
-	for key, sum := range sums {
-		sums[key] = sum / count
+	for _, signal := range signals {
+		stats.Avg[signal] = sums[signal] / count
 	}
 
-	return sums
+	return stats
+}
+
+func printSignalStatBlock(signal string, stats signalStats) {
+	fmt.Printf("%s:\n", signal)
+	fmt.Printf("  avg: %.2f\n", stats.Avg[signal])
+	fmt.Printf("  min: %.2f\n", stats.Min[signal])
+	fmt.Printf("  max: %.2f\n", stats.Max[signal])
+}
+
+func confidenceLabel(score float64) string {
+	switch {
+	case score > 0.75:
+		return "high"
+	case score > 0.50:
+		return "moderate"
+	default:
+		return "low"
+	}
 }
