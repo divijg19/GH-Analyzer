@@ -14,7 +14,7 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  analyze  Analyze a single GitHub profile")
 	fmt.Fprintln(w, "  build    Build a dataset from usernames")
-	fmt.Fprintln(w, "  query    Query a dataset by signal thresholds")
+	fmt.Fprintln(w, "  query    Advanced signal-threshold query")
 	fmt.Fprintln(w, "  search   Discover developers by intent or expression")
 	fmt.Fprintln(w, "  inspect  Inspect a single profile in a dataset")
 	fmt.Fprintln(w, "  dataset  Show dataset summary")
@@ -30,6 +30,7 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "  gh-analyzer query --preset strong --limit 5")
 	fmt.Fprintln(w, "  gh-analyzer search backend")
 	fmt.Fprintln(w, "  gh-analyzer inspect octocat --dataset dataset.json")
+	fmt.Fprintln(w, "  gh-analyzer dataset info")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset dataset.json")
 }
@@ -50,6 +51,7 @@ func printBuildHelp(w io.Writer) {
 func printQueryHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh-analyzer query [options] [expression]")
+	fmt.Fprintln(w, "  Tip: use 'gh-analyzer search' for primary discovery workflows")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Options:")
 	fmt.Fprintln(w, "  --consistency float  Consistency threshold")
@@ -82,6 +84,7 @@ func printInspectHelp(w io.Writer) {
 func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  gh-analyzer dataset [--dataset dataset.json] [--json]")
+	fmt.Fprintln(w, "  gh-analyzer dataset info [--dataset dataset.json]")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats [--dataset dataset.json]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Options:")
@@ -90,6 +93,7 @@ func printDatasetHelp(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  gh-analyzer dataset")
+	fmt.Fprintln(w, "  gh-analyzer dataset info")
 	fmt.Fprintln(w, "  gh-analyzer dataset stats")
 	fmt.Fprintln(w, "  gh-analyzer dataset --json --dataset team.json")
 }

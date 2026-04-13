@@ -158,6 +158,42 @@ func TestDatasetStatsOutput(t *testing.T) {
 	}
 }
 
+func TestDatasetInfoOutput(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runDataset([]string{"info", "--dataset", datasetPath})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Dataset: "+datasetPath) {
+		t.Fatalf("expected dataset path in info output, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "Profiles: 2") {
+		t.Fatalf("expected profile count in info output, got %q", stdout)
+	}
+	if strings.Contains(stdout, "avg:") {
+		t.Fatalf("did not expect stats in info output, got %q", stdout)
+	}
+}
+
+func TestRunCLIMissingDatasetErrorMessage(t *testing.T) {
+	err := runCLI([]string{"dataset", "--dataset", "does-not-exist.json"})
+	if err == nil {
+		t.Fatal("expected missing dataset error")
+	}
+
+	message := err.Error()
+	if !strings.Contains(message, "dataset not found") {
+		t.Fatalf("expected dataset-not-found error, got %q", message)
+	}
+	if !strings.Contains(message, "Run: gh-analyzer build <usernames>") {
+		t.Fatalf("expected actionable guidance, got %q", message)
+	}
+}
+
 func TestParseAnalyzeArgsJSON(t *testing.T) {
 	options, showHelp, err := parseAnalyzeArgs([]string{"--json", "octocat"})
 	if err != nil {

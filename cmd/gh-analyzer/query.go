@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	"github.com/divijg19/GH-Analyzer/internal/presets"
-	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
 
 var andSplitter = regexp.MustCompile(`(?i)\s+AND\s+`)
@@ -36,11 +34,8 @@ func runQuery(args []string) error {
 		return nil
 	}
 
-	indexData, err := storage.Load(*datasetPath)
+	indexData, err := loadDataset(*datasetPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return missingDatasetError(*datasetPath)
-		}
 		return err
 	}
 

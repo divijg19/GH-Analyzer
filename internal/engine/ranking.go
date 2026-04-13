@@ -26,7 +26,12 @@ func (w WeightedRanking) Score(p index.Profile) float64 {
 
 	score := 0.0
 	for signal, weight := range weights {
-		score += p.Signals[signal] * weight
+		value, ok := p.Signals[signal]
+		if !ok {
+			continue
+		}
+
+		score += value * weight
 	}
 
 	return score
