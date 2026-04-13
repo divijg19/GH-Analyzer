@@ -134,6 +134,57 @@ func TestSearchOutputIncludesConfidenceLabel(t *testing.T) {
 	}
 }
 
+func TestSearchCompactMode(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--dataset", datasetPath, "--compact", "consistency>=0"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(stdout, "Why:") {
+		t.Fatalf("expected compact output without explanations, got %q", stdout)
+	}
+	if strings.Contains(stdout, "High confidence") || strings.Contains(stdout, "Moderate confidence") || strings.Contains(stdout, "Low confidence") {
+		t.Fatalf("expected compact output without grouping headings, got %q", stdout)
+	}
+}
+
+func TestSearchLimitAliasK(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--dataset", datasetPath, "-k", "1", "consistency>=0"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Showing: 1 of 2") {
+		t.Fatalf("expected showing summary for -k alias, got %q", stdout)
+	}
+}
+
+func TestSearchGroupingOutput(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--dataset", datasetPath, "consistency>=0"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "High confidence") {
+		t.Fatalf("expected high-confidence group heading, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "Low confidence") {
+		t.Fatalf("expected low-confidence group heading, got %q", stdout)
+	}
+}
+
 func TestDatasetStatsOutput(t *testing.T) {
 	datasetPath := writeTestDataset(t)
 
@@ -176,6 +227,24 @@ func TestDatasetInfoOutput(t *testing.T) {
 	}
 	if strings.Contains(stdout, "avg:") {
 		t.Fatalf("did not expect stats in info output, got %q", stdout)
+	}
+}
+
+func TestDatasetPreviewOutput(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runDataset([]string{"preview", "--dataset", datasetPath})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Preview") {
+		t.Fatalf("expected preview heading, got %q", stdout)
+	}
+	if !strings.Contains(stdout, "alice") || !strings.Contains(stdout, "bob") {
+		t.Fatalf("expected preview rows, got %q", stdout)
 	}
 }
 

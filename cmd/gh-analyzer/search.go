@@ -15,8 +15,10 @@ func runSearch(args []string) error {
 	fs.Usage = func() { printSearchHelp(fs.Output()) }
 	preset := fs.String("preset", "", "preset name: strong, consistent, deep")
 	limit := fs.Int("limit", defaultQueryLimit, "max results")
+	kLimit := fs.Int("k", defaultQueryLimit, "max results (alias)")
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
 	jsonOutput := fs.Bool("json", false, "output JSON")
+	compactOutput := fs.Bool("compact", false, "compact output (no explanations)")
 
 	stop, err := parseFlagsOrHelp(fs, args)
 	if err != nil {
@@ -31,23 +33,41 @@ func runSearch(args []string) error {
 		return fmt.Errorf("search input is required")
 	}
 
+	resolvedLimit, err := resolveLimitFlag(fs, *limit, *kLimit)
+	if err != nil {
+		return err
+	}
+	if resolvedLimit < 0 {
+		return fmt.Errorf("invalid --limit: must be >= 0")
+	}
+
 	indexData, err := loadDataset(*datasetPath)
 	if err != nil {
 		return err
 	}
 
-	results, err := searchpkg.Search(indexData, input, searchpkg.Options{
+	allResults, err := searchpkg.Search(indexData, input, searchpkg.Options{
 		Preset: strings.ToLower(strings.TrimSpace(*preset)),
-		Limit:  *limit,
+		Limit:  0,
 	})
 	if err != nil {
 		return err
+	}
+
+	results := allResults
+	if resolvedLimit > 0 && len(results) > resolvedLimit {
+		results = results[:resolvedLimit]
 	}
 
 	if *jsonOutput {
 		return writeJSON(results)
 	}
 
-	printTopCandidates(results)
+	printMatchSummary(len(allResults), len(results), resolvedLimit)
+	if *compactOutput {
+		printCompactResults(results)
+	} else {
+		printGroupedCandidates(results)
+	}
 	return nil
 }

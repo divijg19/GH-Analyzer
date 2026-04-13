@@ -51,17 +51,10 @@ func printTopMatches(results []engine.Result) {
 		return
 	}
 
-	for i, result := range results {
-		fmt.Printf("%d. %s - %.2f\n", i+1, result.Profile.Username, result.Score)
-		fmt.Println("   Why:")
-		for _, reason := range result.Reasons {
-			fmt.Printf("   - %s\n", reason)
-		}
-		fmt.Println()
-	}
+	printDetailedResultList(results, 1, false)
 }
 
-func printTopCandidates(results []engine.Result) {
+func printGroupedCandidates(results []engine.Result) {
 	fmt.Println("Top candidates")
 	fmt.Println()
 
@@ -70,13 +63,113 @@ func printTopCandidates(results []engine.Result) {
 		return
 	}
 
+	high := make([]engine.Result, 0, len(results))
+	moderate := make([]engine.Result, 0, len(results))
+	low := make([]engine.Result, 0, len(results))
+
+	for _, result := range results {
+		switch confidenceLabel(result.Score) {
+		case "high":
+			high = append(high, result)
+		case "moderate":
+			moderate = append(moderate, result)
+		default:
+			low = append(low, result)
+		}
+	}
+
+	nextRank := 1
+	if len(high) > 0 {
+		fmt.Println("High confidence")
+		nextRank = printDetailedResultList(high, nextRank, true)
+	}
+	if len(moderate) > 0 {
+		fmt.Println("Moderate confidence")
+		nextRank = printDetailedResultList(moderate, nextRank, true)
+	}
+	if len(low) > 0 {
+		fmt.Println("Low confidence")
+		_ = printDetailedResultList(low, nextRank, true)
+	}
+}
+
+func printCompactResults(results []engine.Result) {
+	if len(results) == 0 {
+		fmt.Println("No results")
+		return
+	}
+
+	nameWidth := maxUsernameWidth(results)
 	for i, result := range results {
-		fmt.Printf("%d. %s - %.2f (%s)\n", i+1, result.Profile.Username, result.Score, confidenceLabel(result.Score))
+		fmt.Printf("%d. %-*s  %.2f\n", i+1, nameWidth, result.Profile.Username, result.Score)
+	}
+}
+
+func printDetailedResultList(results []engine.Result, startRank int, includeConfidence bool) int {
+	nameWidth := maxUsernameWidth(results)
+
+	for i, result := range results {
+		rank := startRank + i
+		if includeConfidence {
+			fmt.Printf("%d. %-*s  %.2f (%s)\n", rank, nameWidth, result.Profile.Username, result.Score, confidenceLabel(result.Score))
+		} else {
+			fmt.Printf("%d. %-*s  %.2f\n", rank, nameWidth, result.Profile.Username, result.Score)
+		}
 		fmt.Println("   Why:")
 		for _, reason := range result.Reasons {
 			fmt.Printf("   - %s\n", reason)
 		}
 		fmt.Println()
+	}
+
+	return startRank + len(results)
+}
+
+func maxUsernameWidth(results []engine.Result) int {
+	width := 1
+	for _, result := range results {
+		if len(result.Profile.Username) > width {
+			width = len(result.Profile.Username)
+		}
+	}
+
+	return width
+}
+
+func printDatasetPreview(path string, indexData indexpkg.Index) {
+	profiles := indexData.All()
+	limit := 5
+	if len(profiles) < limit {
+		limit = len(profiles)
+	}
+
+	fmt.Printf("Dataset: %s\n", path)
+	fmt.Printf("Profiles: %d\n", len(profiles))
+	fmt.Println("Preview")
+
+	if limit == 0 {
+		fmt.Println("No profiles")
+		return
+	}
+
+	preview := profiles[:limit]
+	nameWidth := 1
+	for _, profile := range preview {
+		if len(profile.Username) > nameWidth {
+			nameWidth = len(profile.Username)
+		}
+	}
+
+	for i, profile := range preview {
+		fmt.Printf("%d. %-*s  c:%.2f  o:%.2f  d:%.2f  a:%.2f\n",
+			i+1,
+			nameWidth,
+			profile.Username,
+			profile.Signals["consistency"],
+			profile.Signals["ownership"],
+			profile.Signals["depth"],
+			profile.Signals["activity"],
+		)
 	}
 }
 

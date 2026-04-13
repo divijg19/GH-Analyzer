@@ -106,6 +106,35 @@ func TestSearchUnknownTokensIgnored(t *testing.T) {
 	}
 }
 
+func TestSearchSystemsKeyword(t *testing.T) {
+	idx := fixtureIndex()
+
+	results, err := Search(idx, "systems")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Fatalf("expected no systems matches, got %d", len(results))
+	}
+}
+
+func TestSearchFrontendKeyword(t *testing.T) {
+	idx := fixtureIndex()
+
+	results, err := Search(idx, "frontend")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 frontend match, got %d", len(results))
+	}
+	if results[0].Profile.Username != "alice" {
+		t.Fatalf("expected alice, got %q", results[0].Profile.Username)
+	}
+}
+
 func fixtureIndex() indexpkg.Index {
 	return indexpkg.Index{Profiles: []indexpkg.Profile{
 		{
