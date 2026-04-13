@@ -13,7 +13,7 @@ func Explain(p index.Profile, q Query) []string {
 	}
 
 	reasons := make([]string, 0, len(q.Conditions))
-	seen := map[string]struct{}{}
+	seenSignals := map[string]struct{}{}
 
 	for _, condition := range q.Conditions {
 		if !Match(p, condition) {
@@ -25,15 +25,14 @@ func Explain(p index.Profile, q Query) []string {
 		if reason == "" {
 			continue
 		}
-
-		reason = fmt.Sprintf("%s (%.2f)", reason, p.Signals[signal])
-
-		if _, exists := seen[reason]; exists {
+		if _, exists := seenSignals[signal]; exists {
 			continue
 		}
 
+		reason = fmt.Sprintf("%s (%.2f %s %.2f)", reason, p.Signals[signal], strings.TrimSpace(condition.Operator), condition.Value)
+
 		reasons = append(reasons, reason)
-		seen[reason] = struct{}{}
+		seenSignals[signal] = struct{}{}
 	}
 
 	return reasons

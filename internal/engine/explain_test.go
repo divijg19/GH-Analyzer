@@ -23,10 +23,10 @@ func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
 		t.Fatalf("expected 2 reasons, got %d", len(reasons))
 	}
 
-	if reasons[0] != "High consistency (0.87)" {
+	if reasons[0] != "High consistency (0.87 >= 0.70)" {
 		t.Fatalf("unexpected first reason: %s", reasons[0])
 	}
-	if reasons[1] != "Strong ownership (0.75)" {
+	if reasons[1] != "Strong ownership (0.75 >= 0.60)" {
 		t.Fatalf("unexpected second reason: %s", reasons[1])
 	}
 }

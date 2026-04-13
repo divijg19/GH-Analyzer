@@ -114,6 +114,24 @@ func TestSearchJSONOutput(t *testing.T) {
 	if len(results) == 0 {
 		t.Fatal("expected at least one search result")
 	}
+	if strings.Contains(stdout, "(high)") || strings.Contains(stdout, "(moderate)") || strings.Contains(stdout, "(low)") {
+		t.Fatalf("did not expect confidence labels in JSON output: %q", stdout)
+	}
+}
+
+func TestSearchOutputIncludesConfidenceLabel(t *testing.T) {
+	datasetPath := writeTestDataset(t)
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--dataset", datasetPath, "backend"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "(high)") {
+		t.Fatalf("expected confidence label in output, got %q", stdout)
+	}
 }
 
 func TestDatasetStatsOutput(t *testing.T) {
@@ -129,14 +147,14 @@ func TestDatasetStatsOutput(t *testing.T) {
 	if !strings.Contains(stdout, "Dataset: "+datasetPath) {
 		t.Fatalf("expected dataset path in output, got %q", stdout)
 	}
-	if !strings.Contains(stdout, "avg consistency: 0.65") {
-		t.Fatalf("expected avg consistency, got %q", stdout)
+	if !strings.Contains(stdout, "consistency:") || !strings.Contains(stdout, "avg: 0.65") || !strings.Contains(stdout, "min: 0.40") || !strings.Contains(stdout, "max: 0.90") {
+		t.Fatalf("expected consistency stat block, got %q", stdout)
 	}
-	if !strings.Contains(stdout, "avg ownership:   0.65") {
-		t.Fatalf("expected avg ownership, got %q", stdout)
+	if !strings.Contains(stdout, "ownership:") || !strings.Contains(stdout, "min: 0.50") || !strings.Contains(stdout, "max: 0.80") {
+		t.Fatalf("expected ownership stat block, got %q", stdout)
 	}
-	if !strings.Contains(stdout, "avg depth:       0.50") {
-		t.Fatalf("expected avg depth, got %q", stdout)
+	if !strings.Contains(stdout, "depth:") || !strings.Contains(stdout, "avg: 0.50") || !strings.Contains(stdout, "min: 0.30") || !strings.Contains(stdout, "max: 0.70") {
+		t.Fatalf("expected depth stat block, got %q", stdout)
 	}
 }
 
