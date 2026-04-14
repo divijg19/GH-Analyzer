@@ -35,6 +35,13 @@ Signals are clamped to [0,1] and converted to 0-100. Overall score uses:
 
 For very small datasets (fewer than 3 repos), overall score is multiplied by 0.7.
 
+## Scoring Interpretation
+
+Scores are percentile-based within the dataset.
+
+A score of 0.90 means:
+	the candidate ranks higher than 90% of the dataset.
+
 ## Example Output (JSON)
 
 ~~~json

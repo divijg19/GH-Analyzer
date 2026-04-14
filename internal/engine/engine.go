@@ -34,6 +34,7 @@ func Execute(index idx.Index, query Query, ranking RankingStrategy) []Result {
 	}
 
 	profiles := index.All()
+	distribution := BuildDistribution(profiles, ranking)
 	results := make([]Result, 0, len(profiles))
 
 	for _, profile := range profiles {
@@ -41,9 +42,11 @@ func Execute(index idx.Index, query Query, ranking RankingStrategy) []Result {
 			continue
 		}
 
+		rawScore := ranking.Score(profile)
+
 		results = append(results, Result{
 			Profile: profile,
-			Score:   ranking.Score(profile),
+			Score:   CalibrateScore(distribution, rawScore),
 			Reasons: Explain(profile, query),
 		})
 	}

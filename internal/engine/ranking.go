@@ -4,9 +4,9 @@ import "github.com/divijg19/GH-Analyzer/internal/index"
 
 func defaultRankingWeights() map[string]float64 {
 	return map[string]float64{
-		"consistency": 0.5,
+		"consistency": 0.4,
 		"ownership":   0.3,
-		"depth":       0.2,
+		"depth":       0.3,
 	}
 }
 
