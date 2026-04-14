@@ -5,7 +5,13 @@ func SignalsFromReport(report Report) map[string]float64 {
 	ownership := clamp01(float64(report.Scores.Ownership) / scoreScale)
 	depth := clamp01(float64(report.Scores.Depth) / scoreScale)
 	activity := 0.0
-	if consistency > 0 {
+
+	if report.HasSignalValues {
+		consistency = clamp01(report.SignalValues.Consistency)
+		ownership = clamp01(report.SignalValues.Ownership)
+		depth = clamp01(report.SignalValues.Depth)
+		activity = clamp01(report.SignalValues.Activity)
+	} else if consistency > 0 {
 		activity = 1.0
 	}
 
