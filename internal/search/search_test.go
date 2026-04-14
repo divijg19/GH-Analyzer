@@ -60,7 +60,7 @@ func TestSearchExpressionPassthrough(t *testing.T) {
 	}
 }
 
-func TestSearchNormalizationTopScoreIsOne(t *testing.T) {
+func TestSearchSmallDatasetReturnsRawTopScore(t *testing.T) {
 	idx := fixtureIndex()
 
 	results, err := Search(idx, "consistency >= 0", Options{Limit: 10})
@@ -72,8 +72,8 @@ func TestSearchNormalizationTopScoreIsOne(t *testing.T) {
 		t.Fatal("expected non-empty results")
 	}
 
-	if math.Abs(results[0].Score-1.0) > 1e-9 {
-		t.Fatalf("expected highest normalized score to be 1.0, got %.8f", results[0].Score)
+	if math.Abs(results[0].Score-0.81) > 1e-9 {
+		t.Fatalf("expected top raw score 0.81 for small dataset fallback, got %.8f", results[0].Score)
 	}
 }
 

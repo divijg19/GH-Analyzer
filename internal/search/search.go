@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
@@ -30,7 +29,6 @@ func Search(idx index.Index, input string, opts ...Options) ([]engine.Result, er
 	}
 
 	results := engine.Execute(idx, query, engine.WeightedRanking{})
-	normalizeScores(results)
 
 	return results, nil
 }
@@ -55,30 +53,4 @@ func queryFromOptions(input string, options Options) (engine.Query, error) {
 	}
 
 	return query, nil
-}
-
-func normalizeScores(results []engine.Result) {
-	if len(results) == 0 {
-		return
-	}
-
-	maxScore := results[0].Score
-	for _, result := range results {
-		if result.Score > maxScore {
-			maxScore = result.Score
-		}
-	}
-
-	if maxScore == 0 {
-		return
-	}
-
-	for i := range results {
-		normalized := results[i].Score / maxScore
-		results[i].Score = clamp01(normalized)
-	}
-}
-
-func clamp01(value float64) float64 {
-	return math.Max(0, math.Min(1, value))
 }
