@@ -1,37 +1,39 @@
 # GitHub Signal Analyzer
 
-GH-Analyzer is a minimal Go CLI that analyzes a GitHub user's public repositories and outputs a structured JSON report.
+GH-Analyzer is a minimal Go CLI that analyzes a GitHub user's public repositories and returns a deterministic JSON report.
 
-## Problem
+## Project Scope
 
-Given a GitHub username, quickly estimate repository activity and quality signals without external dependencies or complex infrastructure.
+- CLI: deterministic analysis, scoring, search/query workflows, and JSON/report output.
+- Frontend UI: lightweight visualization and exploration of analyzer results without changing scoring logic.
 
-## Approach
-
-1. Accept a GitHub username as a CLI argument.
-2. Fetch public repositories from the GitHub REST API.
-3. Compute signal values from repository metadata.
-4. Convert signals into weighted scores.
-5. Return a final JSON report with scores, summary, and highlights.
-
-Use GH-Analyzer through either CLI entrypoint:
+## Usage
 
 - gh-analyzer <username>
 - gha <username>
 
 If username is missing, the CLI exits with an error message.
 
-## Signals
+## Signal Definitions
 
-- Consistency: ratio of repositories updated in the last 90 days.
-- Ownership: ratio of non-fork repositories.
-- Depth: average size of non-fork repositories where size is at least 50.
+- Consistency: recent non-fork repositories divided by max(10, total non-fork repositories); measures recent activity across original work.
+- Depth: deep non-fork repositories (size >= 50) divided by max(5, total non-fork repositories); measures substantial original projects.
+- Ownership: non-fork repositories with size > 0 divided by all repositories with size > 0; ignores trivial size-0 repositories.
+- Activity: based on the latest update across all repositories with graded decay:
+  - <= 30 days: 1.0
+  - <= 90 days: 0.7
+  - <= 180 days: 0.4
+  - > 180 days: 0.1
 
-Each signal is converted to a 0-100 score. Overall score uses weighted aggregation:
+## Scoring
+
+Signals are clamped to [0,1] and converted to 0-100. Overall score uses:
 
 - Consistency: 40%
 - Ownership: 30%
 - Depth: 30%
+
+For very small datasets (fewer than 3 repos), overall score is multiplied by 0.7.
 
 ## Example Output (JSON)
 
@@ -59,10 +61,3 @@ Each signal is converted to a 0-100 score. Overall score uses weighted aggregati
 - No authentication, so GitHub API rate limits apply.
 - Repository size is a coarse proxy for project depth.
 - Results depend on current GitHub metadata and time window.
-
-## Future Work
-
-- Add optional authenticated requests for higher rate limits.
-- Add organization-level analysis.
-- Add additional signals (language diversity, contribution cadence).
-- Add optional output modes for machine pipelines.
