@@ -10,6 +10,20 @@ export default function App() {
 	const [loading, setLoading] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
 	const [results, setResults] = createSignal<SearchResult[]>([]);
+	const [selected, setSelected] = createSignal<Set<string>>(new Set());
+
+	function toggleSelect(username: string) {
+		setSelected((current) => {
+			const next = new Set(current);
+			if (next.has(username)) {
+				next.delete(username);
+			} else {
+				next.add(username);
+			}
+
+			return next;
+		});
+	}
 
 	const handleSearch = async (value: string) => {
 		const trimmed = value.trim();
@@ -48,9 +62,21 @@ export default function App() {
 								Developer Search
 							</h1>
 						</div>
-						<p class="text-sm text-slate-500">
-							Mode: {live() ? "Live" : "Dataset"}
-						</p>
+						<div class="flex items-center gap-3 text-sm text-slate-500">
+							<p>Mode: {live() ? "Live" : "Dataset"}</p>
+							<Show when={selected().size > 0}>
+								<div class="flex items-center gap-2">
+									<p>{selected().size} selected</p>
+									<button
+										type="button"
+										onClick={() => setSelected(new Set())}
+										class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+									>
+										Clear
+									</button>
+								</div>
+							</Show>
+						</div>
 					</div>
 
 					<SearchBar
@@ -85,7 +111,11 @@ export default function App() {
 						</Show>
 
 						<Show when={!loading() && !error() && results().length > 0}>
-							<Results results={results()} />
+							<Results
+								results={results()}
+								selectedSet={selected()}
+								onToggle={toggleSelect}
+							/>
 						</Show>
 					</section>
 				</main>
