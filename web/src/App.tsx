@@ -1,9 +1,51 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 
 import { type SearchResult, search } from "./api/client";
 import ComparisonPanel from "./components/ComparisonPanel";
 import Results from "./components/Results";
 import SearchBar from "./components/SearchBar";
+import Shortlist from "./components/Shortlist";
+
+const SHORTLIST_STORAGE_KEY = "gh_analyzer_shortlist";
+
+function isStoredSearchResult(value: unknown): value is SearchResult {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const candidate = value as { username?: unknown };
+	return typeof candidate.username === "string";
+}
+
+function loadShortlistFromStorage(): Map<string, SearchResult> {
+	if (typeof window === "undefined") {
+		return new Map();
+	}
+
+	try {
+		const raw = window.localStorage.getItem(SHORTLIST_STORAGE_KEY);
+		if (!raw) {
+			return new Map();
+		}
+
+		const parsed = JSON.parse(raw);
+		if (!Array.isArray(parsed)) {
+			return new Map();
+		}
+
+		const restored = new Map<string, SearchResult>();
+		for (const entry of parsed) {
+			if (!isStoredSearchResult(entry)) {
+				return new Map();
+			}
+			restored.set(entry.username, entry);
+		}
+
+		return restored;
+	} catch {
+		return new Map();
+	}
+}
 
 export default function App() {
 	const [query, setQuery] = createSignal("");
@@ -12,12 +54,37 @@ export default function App() {
 	const [error, setError] = createSignal<string | null>(null);
 	const [results, setResults] = createSignal<SearchResult[]>([]);
 	const [selected, setSelected] = createSignal<Set<string>>(new Set());
+	const [shortlist, setShortlist] = createSignal<Map<string, SearchResult>>(
+		loadShortlistFromStorage(),
+	);
 	const [compareOpen, setCompareOpen] = createSignal(false);
 
 	const selectedResults = () =>
 		results().filter((result) => selected().has(result.username));
+	const shortlistResults = () => Array.from(shortlist().values());
 
 	const canCompare = () => selected().size >= 2 && selected().size <= 5;
+
+	createEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
+
+		try {
+			const payload = shortlistResults();
+			if (payload.length === 0) {
+				window.localStorage.removeItem(SHORTLIST_STORAGE_KEY);
+				return;
+			}
+
+			window.localStorage.setItem(
+				SHORTLIST_STORAGE_KEY,
+				JSON.stringify(payload),
+			);
+		} catch {
+			// Ignore storage write errors and keep in-memory shortlist usable.
+		}
+	});
 
 	function toggleSelect(username: string) {
 		setSelected((current) => {
@@ -30,6 +97,43 @@ export default function App() {
 
 			return next;
 		});
+	}
+
+	function addToShortlist(result: SearchResult) {
+		setShortlist((current) => {
+			const next = new Map(current);
+			next.set(result.username, result);
+			return next;
+		});
+	}
+
+	function removeFromShortlist(username: string) {
+		setShortlist((current) => {
+			const next = new Map(current);
+			next.delete(username);
+			return next;
+		});
+	}
+
+	function addSelectedToShortlist() {
+		setShortlist((current) => {
+			const next = new Map(current);
+			for (const result of selectedResults()) {
+				next.set(result.username, result);
+			}
+			return next;
+		});
+	}
+
+	function clearShortlist() {
+		setShortlist(new Map());
+		if (typeof window !== "undefined") {
+			try {
+				window.localStorage.removeItem(SHORTLIST_STORAGE_KEY);
+			} catch {
+				// Ignore storage clear errors.
+			}
+		}
 	}
 
 	const handleSearch = async (value: string) => {
@@ -71,6 +175,14 @@ export default function App() {
 						</div>
 						<div class="flex items-center gap-3 text-sm text-slate-500">
 							<p>Mode: {live() ? "Live" : "Dataset"}</p>
+							<button
+								type="button"
+								onClick={addSelectedToShortlist}
+								disabled={selectedResults().length === 0}
+								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								Add Selected to Shortlist
+							</button>
 							<button
 								type="button"
 								onClick={() => {
@@ -142,7 +254,19 @@ export default function App() {
 								results={results()}
 								selectedSet={selected()}
 								onToggle={toggleSelect}
+								onAddToShortlist={addToShortlist}
+								shortlistSet={shortlist()}
 							/>
+						</Show>
+
+						<Show when={shortlistResults().length > 0}>
+							<div class="mt-6">
+								<Shortlist
+									results={shortlistResults()}
+									onRemove={removeFromShortlist}
+									onClear={clearShortlist}
+								/>
+							</div>
 						</Show>
 					</section>
 				</main>
