@@ -4,13 +4,21 @@ import type { SearchResult } from "../api/client";
 
 type CandidateCardProps = {
 	result: SearchResult;
+	selected: boolean;
+	onToggle: (username: string) => void;
 };
 
 export default function CandidateCard(props: CandidateCardProps) {
 	const [expanded, setExpanded] = createSignal(false);
 
 	return (
-		<article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+		<article
+			class="rounded-xl border bg-white p-5 shadow-sm"
+			classList={{
+				"border-slate-200": !props.selected,
+				"border-sky-300 bg-sky-50/40": props.selected,
+			}}
+		>
 			<header class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h3 class="text-lg font-semibold text-slate-900">
@@ -21,7 +29,16 @@ export default function CandidateCard(props: CandidateCardProps) {
 					</p>
 				</div>
 
-				<div class="flex items-center gap-2 text-sm">
+				<div class="flex items-center gap-3 text-sm">
+					<label class="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-700">
+						<input
+							type="checkbox"
+							checked={props.selected}
+							onClick={() => props.onToggle(props.result.username)}
+						/>
+						<span>Select</span>
+					</label>
+
 					<span class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-medium text-slate-700">
 						{props.result.score.toFixed(2)}
 					</span>
@@ -40,7 +57,7 @@ export default function CandidateCard(props: CandidateCardProps) {
 			<button
 				type="button"
 				onClick={() => setExpanded((value) => !value)}
-				class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100"
+				class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
 			>
 				{expanded() ? "Hide signals" : "Show signals"}
 			</button>
