@@ -6,10 +6,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/divijg19/GH-Analyzer/internal/engine"
 	searchpkg "github.com/divijg19/GH-Analyzer/internal/search"
 )
 
+var loadLiveDataset = buildLiveIndex
+
 func runSearch(args []string) error {
+	args, liveFromPosition := stripLiveFlag(args)
+
 	fs := flag.NewFlagSet("search", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.Usage = func() { printSearchHelp(fs.Output()) }
@@ -17,6 +22,7 @@ func runSearch(args []string) error {
 	limit := fs.Int("limit", defaultQueryLimit, "max results")
 	kLimit := fs.Int("k", defaultQueryLimit, "max results (alias)")
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
+	live := fs.Bool("live", false, "fetch temporary candidates from live GitHub search")
 	jsonOutput := fs.Bool("json", false, "output JSON")
 	compactOutput := fs.Bool("compact", false, "compact output (no explanations)")
 
@@ -33,6 +39,11 @@ func runSearch(args []string) error {
 		return fmt.Errorf("search input is required")
 	}
 
+	liveMode := *live || liveFromPosition
+	if liveMode && input == "" {
+		return fmt.Errorf("search input is required")
+	}
+
 	resolvedLimit, err := resolveLimitFlag(fs, *limit, *kLimit)
 	if err != nil {
 		return err
@@ -41,17 +52,44 @@ func runSearch(args []string) error {
 		return fmt.Errorf("invalid --limit: must be >= 0")
 	}
 
-	indexData, err := loadDataset(*datasetPath)
-	if err != nil {
-		return err
+	var allResults []engine.Result
+	liveCandidateCount := 0
+
+	if liveMode {
+		idx, err := loadLiveDataset(input)
+		if err != nil {
+			return err
+		}
+		liveCandidateCount = len(idx.All())
+
+		allResults, err = searchpkg.Search(idx, input, searchpkg.Options{
+			Preset: strings.ToLower(strings.TrimSpace(*preset)),
+			Limit:  0,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		idx, err := loadDataset(*datasetPath)
+		if err != nil {
+			return err
+		}
+
+		allResults, err = searchpkg.Search(idx, input, searchpkg.Options{
+			Preset: strings.ToLower(strings.TrimSpace(*preset)),
+			Limit:  0,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
-	allResults, err := searchpkg.Search(indexData, input, searchpkg.Options{
-		Preset: strings.ToLower(strings.TrimSpace(*preset)),
-		Limit:  0,
-	})
-	if err != nil {
-		return err
+	if liveMode && liveCandidateCount == 0 {
+		if *jsonOutput {
+			return writeJSON([]engine.Result{})
+		}
+		fmt.Println("No candidates found.")
+		return nil
 	}
 
 	results := allResults
@@ -70,4 +108,19 @@ func runSearch(args []string) error {
 		printGroupedCandidates(results)
 	}
 	return nil
+}
+
+func stripLiveFlag(args []string) ([]string, bool) {
+	result := make([]string, 0, len(args))
+	live := false
+
+	for _, arg := range args {
+		if strings.TrimSpace(arg) == "--live" {
+			live = true
+			continue
+		}
+		result = append(result, arg)
+	}
+
+	return result, live
 }

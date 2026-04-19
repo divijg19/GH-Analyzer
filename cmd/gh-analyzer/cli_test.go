@@ -185,6 +185,64 @@ func TestSearchGroupingOutput(t *testing.T) {
 	}
 }
 
+func TestSearchLiveJSONOutput(t *testing.T) {
+	originalLoadLiveDataset := loadLiveDataset
+	t.Cleanup(func() {
+		loadLiveDataset = originalLoadLiveDataset
+	})
+
+	loadLiveDataset = func(query string) (indexpkg.Index, error) {
+		return indexpkg.Index{Profiles: []indexpkg.Profile{
+			{
+				Username: "alice",
+				Signals: map[string]float64{
+					"consistency": 0.9,
+					"ownership":   0.8,
+					"depth":       0.7,
+					"activity":    1.0,
+				},
+			},
+		}}, nil
+	}
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"--json", "backend", "--live"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var results []engine.Result
+	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
+		t.Fatalf("expected valid JSON output, got error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 live result, got %d", len(results))
+	}
+}
+
+func TestSearchLiveNoCandidates(t *testing.T) {
+	originalLoadLiveDataset := loadLiveDataset
+	t.Cleanup(func() {
+		loadLiveDataset = originalLoadLiveDataset
+	})
+
+	loadLiveDataset = func(query string) (indexpkg.Index, error) {
+		return indexpkg.Index{}, nil
+	}
+
+	stdout, _, err := captureOutput(func() error {
+		return runSearch([]string{"backend", "--live"})
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(stdout, "No candidates found.") {
+		t.Fatalf("expected no-candidates live message, got %q", stdout)
+	}
+}
+
 func TestDatasetStatsOutput(t *testing.T) {
 	datasetPath := writeTestDataset(t)
 
