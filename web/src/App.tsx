@@ -1,6 +1,7 @@
 import { createSignal, Show } from "solid-js";
 
 import { type SearchResult, search } from "./api/client";
+import ComparisonPanel from "./components/ComparisonPanel";
 import Results from "./components/Results";
 import SearchBar from "./components/SearchBar";
 
@@ -11,6 +12,12 @@ export default function App() {
 	const [error, setError] = createSignal<string | null>(null);
 	const [results, setResults] = createSignal<SearchResult[]>([]);
 	const [selected, setSelected] = createSignal<Set<string>>(new Set());
+	const [compareOpen, setCompareOpen] = createSignal(false);
+
+	const selectedResults = () =>
+		results().filter((result) => selected().has(result.username));
+
+	const canCompare = () => selected().size >= 2 && selected().size <= 5;
 
 	function toggleSelect(username: string) {
 		setSelected((current) => {
@@ -64,6 +71,19 @@ export default function App() {
 						</div>
 						<div class="flex items-center gap-3 text-sm text-slate-500">
 							<p>Mode: {live() ? "Live" : "Dataset"}</p>
+							<button
+								type="button"
+								onClick={() => {
+									if (!canCompare()) {
+										return;
+									}
+									setCompareOpen(true);
+								}}
+								disabled={!canCompare()}
+								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								Compare ({selected().size})
+							</button>
 							<Show when={selected().size > 0}>
 								<div class="flex items-center gap-2">
 									<p>{selected().size} selected</p>
@@ -88,6 +108,13 @@ export default function App() {
 
 				<main class="mx-auto mt-5 flex min-h-0 w-full max-w-4xl flex-1">
 					<section class="min-h-0 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+						<Show when={compareOpen()}>
+							<ComparisonPanel
+								results={selectedResults()}
+								onClose={() => setCompareOpen(false)}
+							/>
+						</Show>
+
 						<Show when={query().length > 0}>
 							<p class="mb-4 text-sm text-slate-500">Query: {query()}</p>
 						</Show>
