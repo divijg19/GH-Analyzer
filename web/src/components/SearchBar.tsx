@@ -1,42 +1,50 @@
 import type { JSX } from "solid-js";
+import { createSignal } from "solid-js";
 
 type SearchBarProps = {
-	username: string;
-	loading: boolean;
-	onUsernameChange: (value: string) => void;
-	onSubmit: () => void;
+	onSearch: (query: string) => void;
+	live: boolean;
+	onToggleLive: () => void;
 };
 
 export default function SearchBar(props: SearchBarProps) {
-	const isDisabled = () => props.loading || props.username.trim().length === 0;
+	const [query, setQuery] = createSignal("");
 
 	const handleSubmit: JSX.EventHandler<HTMLFormElement, SubmitEvent> = (
 		event,
 	) => {
 		event.preventDefault();
-		if (isDisabled()) {
+		const value = query().trim();
+		if (!value) {
 			return;
 		}
-		props.onSubmit();
+
+		props.onSearch(value);
 	};
 
 	return (
-		<form onSubmit={handleSubmit} class="mx-6 flex flex-1 items-center gap-3">
+		<form onSubmit={handleSubmit} class="flex w-full items-center gap-3">
 			<input
 				type="text"
 				autofocus
-				placeholder="Enter GitHub username (e.g. torvalds)"
-				value={props.username}
-				onInput={(event) => props.onUsernameChange(event.currentTarget.value)}
-				disabled={props.loading}
-				class="w-full flex-1 rounded-md border border-gray-200 px-5 py-2 text-sm transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+				placeholder="Search developers (e.g. backend or consistency > 0.7)"
+				value={query()}
+				onInput={(event) => setQuery(event.currentTarget.value)}
+				class="w-full min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition focus:border-slate-400"
 			/>
 			<button
 				type="submit"
-				disabled={isDisabled()}
-				class="cursor-pointer rounded-md bg-black px-4 py-2.5 text-white transition-all duration-150 hover:bg-black/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+				disabled={query().trim().length === 0}
+				class="rounded-lg border border-slate-300 bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
 			>
-				Analyze
+				Search
+			</button>
+			<button
+				type="button"
+				onClick={props.onToggleLive}
+				class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm transition hover:bg-slate-50"
+			>
+				{props.live ? "Live" : "Dataset"}
 			</button>
 		</form>
 	);
