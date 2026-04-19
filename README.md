@@ -23,7 +23,7 @@ If username is missing, the CLI exits with an error message.
   - <= 30 days: 1.0
   - <= 90 days: 0.7
   - <= 180 days: 0.4
-  - > 180 days: 0.1
+  - over 180 days: 0.1
 
 ## Scoring
 
@@ -41,6 +41,18 @@ Scores are percentile-based within the dataset.
 
 A score of 0.90 means:
 	the candidate ranks higher than 90% of the dataset.
+
+## Live Mode
+
+Use --live to fetch candidates directly from GitHub.
+
+Example:
+	gh-analyzer search backend --live
+
+Notes:
+- limited sample size (max ~20 users)
+- subject to GitHub API rate limits
+- results are not persisted unless explicitly saved
 
 ## Example Output (JSON)
 
