@@ -1,51 +1,36 @@
-export type Report = {
+export type SearchResult = {
 	username: string;
-	scores: {
-		ownership: number;
+	score: number;
+	confidence: "high" | "moderate" | "low" | string;
+	signals: {
 		consistency: number;
+		ownership: number;
 		depth: number;
-		overall: number;
+		activity: number;
 	};
-	summary: string;
-	highlights: string[];
-	top_repos: {
-		name: string;
-		size: number;
-	}[];
+	reasons: string[];
 };
 
-type ErrorPayload = {
-	error?: string;
+export type SearchResponse = {
+	query: string;
+	mode: "dataset" | "live" | string;
+	total: number;
+	results: SearchResult[];
 };
 
-const ANALYZE_URL = "http://localhost:8080/analyze";
+const SEARCH_URL = "http://localhost:8080/search";
 
-export async function fetchReport(username: string): Promise<Report> {
+export async function search(
+	query: string,
+	live: boolean,
+): Promise<SearchResponse> {
 	const response = await fetch(
-		`${ANALYZE_URL}?username=${encodeURIComponent(username)}`,
+		`${SEARCH_URL}?q=${encodeURIComponent(query)}&live=${live}`,
 	);
 
-	let payload: Report | ErrorPayload | null = null;
-	try {
-		payload = (await response.json()) as Report | ErrorPayload;
-	} catch {
-		payload = null;
-	}
-
 	if (!response.ok) {
-		const message =
-			typeof payload === "object" &&
-			payload !== null &&
-			"error" in payload &&
-			typeof payload.error === "string"
-				? payload.error
-				: "analysis request failed";
-		throw new Error(message);
+		throw new Error("request failed");
 	}
 
-	if (!payload) {
-		throw new Error("invalid API response");
-	}
-
-	return payload as Report;
+	return (await response.json()) as SearchResponse;
 }
