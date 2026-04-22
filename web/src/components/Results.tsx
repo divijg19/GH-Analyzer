@@ -6,8 +6,6 @@ type ResultsProps = {
 	results: SearchResult[];
 	selectedSet: Set<string>;
 	onToggle: (username: string) => void;
-	onAddToShortlist: (result: SearchResult) => void;
-	shortlistSet: Map<string, SearchResult>;
 };
 
 export default function Results(props: ResultsProps) {
@@ -19,8 +17,6 @@ export default function Results(props: ResultsProps) {
 						result={result}
 						selected={props.selectedSet.has(result.username)}
 						onToggle={props.onToggle}
-						onAddToShortlist={props.onAddToShortlist}
-						shortlisted={props.shortlistSet.has(result.username)}
 					/>
 				)}
 			</For>

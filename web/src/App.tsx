@@ -7,44 +7,35 @@ import Results from "./components/Results";
 import SearchBar from "./components/SearchBar";
 import SegmentedControl from "./components/SegmentedControl";
 
-const SHORTLIST_STORAGE_KEY = "gh_analyzer_shortlist";
+const SELECTION_STORAGE_KEY = "gh_analyzer_selection";
 
-function isStoredSearchResult(value: unknown): value is SearchResult {
-	if (typeof value !== "object" || value === null) {
-		return false;
-	}
-
-	const candidate = value as { username?: unknown };
-	return typeof candidate.username === "string";
-}
-
-function loadShortlistFromStorage(): Map<string, SearchResult> {
+function loadSelectionFromStorage(): Set<string> {
 	if (typeof window === "undefined") {
-		return new Map();
+		return new Set();
 	}
 
 	try {
-		const raw = window.localStorage.getItem(SHORTLIST_STORAGE_KEY);
+		const raw = window.localStorage.getItem(SELECTION_STORAGE_KEY);
 		if (!raw) {
-			return new Map();
+			return new Set();
 		}
 
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed)) {
-			return new Map();
+			return new Set();
 		}
 
-		const restored = new Map<string, SearchResult>();
-		for (const entry of parsed) {
-			if (!isStoredSearchResult(entry)) {
-				return new Map();
+		const restored = new Set<string>();
+		for (const username of parsed) {
+			if (typeof username !== "string") {
+				return new Set();
 			}
-			restored.set(entry.username, entry);
+			restored.add(username);
 		}
 
 		return restored;
 	} catch {
-		return new Map();
+		return new Set();
 	}
 }
 
@@ -54,17 +45,16 @@ export default function App() {
 	const [loading, setLoading] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
 	const [results, setResults] = createSignal<SearchResult[]>([]);
-	const [selected, setSelected] = createSignal<Set<string>>(new Set());
-	const [shortlist, setShortlist] = createSignal<Map<string, SearchResult>>(
-		loadShortlistFromStorage(),
+	const [selected, setSelected] = createSignal<Set<string>>(
+		loadSelectionFromStorage(),
 	);
 	const [compareOpen, setCompareOpen] = createSignal(false);
 
-	const selectedResults = () =>
+	const visibleSelected = () =>
 		results().filter((result) => selected().has(result.username));
-	const shortlistResults = () => Array.from(shortlist().values());
+	const visibleCount = () => visibleSelected().length;
 
-	const canCompare = () => selected().size >= 2 && selected().size <= 5;
+	const canCompare = () => visibleCount() >= 2 && visibleCount() <= 5;
 
 	createEffect(() => {
 		if (typeof window === "undefined") {
@@ -72,18 +62,18 @@ export default function App() {
 		}
 
 		try {
-			const payload = shortlistResults();
+			const payload = Array.from(selected());
 			if (payload.length === 0) {
-				window.localStorage.removeItem(SHORTLIST_STORAGE_KEY);
+				window.localStorage.removeItem(SELECTION_STORAGE_KEY);
 				return;
 			}
 
 			window.localStorage.setItem(
-				SHORTLIST_STORAGE_KEY,
+				SELECTION_STORAGE_KEY,
 				JSON.stringify(payload),
 			);
 		} catch {
-			// Ignore storage write errors and keep in-memory shortlist usable.
+			// Ignore storage write errors and keep in-memory selection usable.
 		}
 	});
 
@@ -100,53 +90,22 @@ export default function App() {
 		});
 	}
 
-	function addToShortlist(result: SearchResult) {
-		setShortlist((current) => {
-			const next = new Map(current);
-			next.set(result.username, result);
-			return next;
-		});
+	function removeSelected(username: string) {
+		const next = new Set(selected());
+		next.delete(username);
+		setSelected(next);
 	}
 
-	function removeFromShortlist(username: string) {
-		setShortlist((current) => {
-			const next = new Map(current);
-			next.delete(username);
-			return next;
-		});
-	}
-
-	function addSelectedToShortlist() {
-		setShortlist((current) => {
-			const next = new Map(current);
-			for (const result of selectedResults()) {
-				next.set(result.username, result);
-			}
-			return next;
-		});
-	}
-
-	function clearShortlist() {
-		setShortlist(new Map());
-		if (typeof window !== "undefined") {
-			try {
-				window.localStorage.removeItem(SHORTLIST_STORAGE_KEY);
-			} catch {
-				// Ignore storage clear errors.
-			}
-		}
-	}
-
-	function exportShortlistJSON() {
-		const snapshot = shortlistResults();
+	function exportSelectionJSON() {
+		const snapshot = visibleSelected();
 		const content = JSON.stringify(snapshot, null, 2);
-		downloadFile("gh-analyzer-shortlist.json", content, "application/json");
+		downloadFile("gh-analyzer-selection.json", content, "application/json");
 	}
 
-	function exportShortlistMarkdown() {
-		const snapshot = shortlistResults();
+	function exportSelectionMarkdown() {
+		const snapshot = visibleSelected();
 		const lines: string[] = [
-			"# GH Analyzer Shortlist",
+			"# GH Analyzer Selection",
 			"",
 			"## Candidates",
 			"",
@@ -164,7 +123,7 @@ export default function App() {
 			}
 		});
 
-		downloadFile("gh-analyzer-shortlist.md", lines.join("\n"), "text/markdown");
+		downloadFile("gh-analyzer-selection.md", lines.join("\n"), "text/markdown");
 	}
 
 	function downloadFile(filename: string, content: string, mimeType: string) {
@@ -233,28 +192,24 @@ export default function App() {
 
 				<main class="mt-5 flex min-h-0 flex-1 gap-4">
 					<ControlPanel
-						selectedCount={selected().size}
-						canCompare={canCompare()}
+						selected={selected()}
+						results={results()}
 						onCompare={() => {
 							if (!canCompare()) {
 								return;
 							}
 							setCompareOpen(true);
 						}}
-						onClearSelection={() => setSelected(new Set())}
-						canAddSelected={selectedResults().length > 0}
-						onAddSelected={addSelectedToShortlist}
-						shortlist={shortlistResults()}
-						onRemoveShortlist={removeFromShortlist}
-						onClearShortlist={clearShortlist}
-						onExportJSON={exportShortlistJSON}
-						onExportMarkdown={exportShortlistMarkdown}
+						onRemove={removeSelected}
+						onClear={() => setSelected(new Set())}
+						onExportJSON={exportSelectionJSON}
+						onExportMD={exportSelectionMarkdown}
 					/>
 
 					<section class="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
 						<Show when={compareOpen()}>
 							<ComparisonPanel
-								results={selectedResults()}
+								results={visibleSelected()}
 								onClose={() => setCompareOpen(false)}
 							/>
 						</Show>
@@ -287,8 +242,6 @@ export default function App() {
 									results={results()}
 									selectedSet={selected()}
 									onToggle={toggleSelect}
-									onAddToShortlist={addToShortlist}
-									shortlistSet={shortlist()}
 								/>
 							</Show>
 						</div>
