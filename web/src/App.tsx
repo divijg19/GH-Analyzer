@@ -2,9 +2,10 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { type SearchResult, search } from "./api/client";
 import ComparisonPanel from "./components/ComparisonPanel";
+import ControlPanel from "./components/ControlPanel";
 import Results from "./components/Results";
 import SearchBar from "./components/SearchBar";
-import Shortlist from "./components/Shortlist";
+import SegmentedControl from "./components/SegmentedControl";
 
 const SHORTLIST_STORAGE_KEY = "gh_analyzer_shortlist";
 
@@ -136,6 +137,52 @@ export default function App() {
 		}
 	}
 
+	function exportShortlistJSON() {
+		const snapshot = shortlistResults();
+		const content = JSON.stringify(snapshot, null, 2);
+		downloadFile("gh-analyzer-shortlist.json", content, "application/json");
+	}
+
+	function exportShortlistMarkdown() {
+		const snapshot = shortlistResults();
+		const lines: string[] = [
+			"# GH Analyzer Shortlist",
+			"",
+			"## Candidates",
+			"",
+		];
+
+		snapshot.forEach((result, index) => {
+			lines.push(
+				`${index + 1}. ${result.username} — ${result.score.toFixed(2)}`,
+			);
+			for (const reason of result.reasons) {
+				lines.push(`   - ${reason}`);
+			}
+			if (index < snapshot.length - 1) {
+				lines.push("");
+			}
+		});
+
+		downloadFile("gh-analyzer-shortlist.md", lines.join("\n"), "text/markdown");
+	}
+
+	function downloadFile(filename: string, content: string, mimeType: string) {
+		if (typeof window === "undefined") {
+			return;
+		}
+
+		const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+		const url = window.URL.createObjectURL(blob);
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+		document.body.appendChild(anchor);
+		anchor.click();
+		anchor.remove();
+		window.URL.revokeObjectURL(url);
+	}
+
 	const handleSearch = async (value: string) => {
 		const trimmed = value.trim();
 		setQuery(trimmed);
@@ -162,9 +209,9 @@ export default function App() {
 
 	return (
 		<div class="h-screen overflow-hidden bg-slate-50 text-slate-900">
-			<div class="mx-auto flex h-full max-w-5xl flex-col px-4 py-6">
-				<header class="mx-auto w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-					<div class="mb-3 flex items-center justify-between">
+			<div class="mx-auto flex h-full max-w-7xl flex-col px-4 py-6">
+				<header class="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+					<div class="flex items-center gap-4">
 						<div>
 							<p class="text-sm font-semibold uppercase tracking-wide text-slate-500">
 								GH Analyzer
@@ -173,53 +220,38 @@ export default function App() {
 								Developer Search
 							</h1>
 						</div>
-						<div class="flex items-center gap-3 text-sm text-slate-500">
-							<p>Mode: {live() ? "Live" : "Dataset"}</p>
-							<button
-								type="button"
-								onClick={addSelectedToShortlist}
-								disabled={selectedResults().length === 0}
-								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Add Selected to Shortlist
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									if (!canCompare()) {
-										return;
-									}
-									setCompareOpen(true);
-								}}
-								disabled={!canCompare()}
-								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Compare ({selected().size})
-							</button>
-							<Show when={selected().size > 0}>
-								<div class="flex items-center gap-2">
-									<p>{selected().size} selected</p>
-									<button
-										type="button"
-										onClick={() => setSelected(new Set())}
-										class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-									>
-										Clear
-									</button>
-								</div>
-							</Show>
+						<div class="min-w-0 flex-1">
+							<SearchBar onSearch={handleSearch} loading={loading()} />
 						</div>
-					</div>
 
-					<SearchBar
-						onSearch={handleSearch}
-						live={live()}
-						onToggleLive={() => setLive((value) => !value)}
-					/>
+						<SegmentedControl
+							mode={live() ? "live" : "dataset"}
+							onChange={(mode) => setLive(mode === "live")}
+						/>
+					</div>
 				</header>
 
-				<main class="mx-auto mt-5 flex min-h-0 w-full max-w-4xl flex-1">
-					<section class="min-h-0 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+				<main class="mt-5 flex min-h-0 flex-1 gap-4">
+					<ControlPanel
+						selectedCount={selected().size}
+						canCompare={canCompare()}
+						onCompare={() => {
+							if (!canCompare()) {
+								return;
+							}
+							setCompareOpen(true);
+						}}
+						onClearSelection={() => setSelected(new Set())}
+						canAddSelected={selectedResults().length > 0}
+						onAddSelected={addSelectedToShortlist}
+						shortlist={shortlistResults()}
+						onRemoveShortlist={removeFromShortlist}
+						onClearShortlist={clearShortlist}
+						onExportJSON={exportShortlistJSON}
+						onExportMarkdown={exportShortlistMarkdown}
+					/>
+
+					<section class="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
 						<Show when={compareOpen()}>
 							<ComparisonPanel
 								results={selectedResults()}
@@ -231,43 +263,35 @@ export default function App() {
 							<p class="mb-4 text-sm text-slate-500">Query: {query()}</p>
 						</Show>
 
-						<Show when={loading()}>
-							<div class="flex h-full items-center justify-center text-sm text-slate-600">
-								Searching...
-							</div>
-						</Show>
+						<div class="min-h-0 flex-1 overflow-y-auto pr-1">
+							<Show when={loading()}>
+								<div class="flex h-full items-center justify-center text-sm text-slate-600">
+									Searching...
+								</div>
+							</Show>
 
-						<Show when={!loading() && error()}>
-							<div class="flex h-full items-center justify-center text-sm text-red-600">
-								{error()}
-							</div>
-						</Show>
+							<Show when={!loading() && error()}>
+								<div class="flex h-full items-center justify-center text-sm text-red-600">
+									{error()}
+								</div>
+							</Show>
 
-						<Show when={!loading() && !error() && results().length === 0}>
-							<div class="flex h-full items-center justify-center text-sm text-slate-600">
-								No candidates found
-							</div>
-						</Show>
+							<Show when={!loading() && !error() && results().length === 0}>
+								<div class="flex h-full items-center justify-center text-sm text-slate-600">
+									No candidates found
+								</div>
+							</Show>
 
-						<Show when={!loading() && !error() && results().length > 0}>
-							<Results
-								results={results()}
-								selectedSet={selected()}
-								onToggle={toggleSelect}
-								onAddToShortlist={addToShortlist}
-								shortlistSet={shortlist()}
-							/>
-						</Show>
-
-						<Show when={shortlistResults().length > 0}>
-							<div class="mt-6">
-								<Shortlist
-									results={shortlistResults()}
-									onRemove={removeFromShortlist}
-									onClear={clearShortlist}
+							<Show when={!loading() && !error() && results().length > 0}>
+								<Results
+									results={results()}
+									selectedSet={selected()}
+									onToggle={toggleSelect}
+									onAddToShortlist={addToShortlist}
+									shortlistSet={shortlist()}
 								/>
-							</div>
-						</Show>
+							</Show>
+						</div>
 					</section>
 				</main>
 			</div>

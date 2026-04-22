@@ -59,7 +59,7 @@ export default function CandidateCard(props: CandidateCardProps) {
 			<button
 				type="button"
 				onClick={() => setExpanded((value) => !value)}
-				class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+				class="mt-4 h-9 rounded-md border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 hover:bg-slate-100"
 			>
 				{expanded() ? "Hide signals" : "Show signals"}
 			</button>
@@ -67,7 +67,8 @@ export default function CandidateCard(props: CandidateCardProps) {
 			<button
 				type="button"
 				onClick={() => props.onAddToShortlist(props.result)}
-				class="ml-2 mt-4 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+				disabled={props.shortlisted}
+				class="ml-2 mt-4 h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{props.shortlisted ? "In Shortlist" : "Add to Shortlist"}
 			</button>
