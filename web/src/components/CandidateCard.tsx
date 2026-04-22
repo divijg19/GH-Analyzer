@@ -6,8 +6,6 @@ type CandidateCardProps = {
 	result: SearchResult;
 	selected: boolean;
 	onToggle: (username: string) => void;
-	onAddToShortlist: (result: SearchResult) => void;
-	shortlisted: boolean;
 };
 
 export default function CandidateCard(props: CandidateCardProps) {
@@ -62,15 +60,6 @@ export default function CandidateCard(props: CandidateCardProps) {
 				class="mt-4 h-9 rounded-md border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 hover:bg-slate-100"
 			>
 				{expanded() ? "Hide signals" : "Show signals"}
-			</button>
-
-			<button
-				type="button"
-				onClick={() => props.onAddToShortlist(props.result)}
-				disabled={props.shortlisted}
-				class="ml-2 mt-4 h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{props.shortlisted ? "In Shortlist" : "Add to Shortlist"}
 			</button>
 
 			<Show when={expanded()}>
