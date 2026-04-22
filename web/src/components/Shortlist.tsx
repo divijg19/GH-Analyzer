@@ -5,7 +5,6 @@ import type { SearchResult } from "../api/client";
 type ShortlistProps = {
 	results: SearchResult[];
 	onRemove: (username: string) => void;
-	onClear: () => void;
 };
 
 export default function Shortlist(props: ShortlistProps) {
@@ -15,13 +14,6 @@ export default function Shortlist(props: ShortlistProps) {
 				<h2 class="text-sm font-semibold text-slate-700">
 					Shortlist ({props.results.length})
 				</h2>
-				<button
-					type="button"
-					onClick={props.onClear}
-					class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-				>
-					Clear Shortlist
-				</button>
 			</div>
 
 			<div class="space-y-2">
@@ -35,7 +27,7 @@ export default function Shortlist(props: ShortlistProps) {
 							<button
 								type="button"
 								onClick={() => props.onRemove(result.username)}
-								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+								class="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								Remove
 							</button>
