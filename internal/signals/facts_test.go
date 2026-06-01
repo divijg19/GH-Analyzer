@@ -335,3 +335,115 @@ func assertZeroFacts(t *testing.T, f Facts) {
 		t.Fatalf("expected LatestActivity zero, got %v", f.LatestActivity)
 	}
 }
+
+func TestExtractSignalsEquivalence(t *testing.T) {
+	cases := []struct {
+		name  string
+		repos []Repo
+	}{
+		{
+			name:  "empty",
+			repos: nil,
+		},
+		{
+			name:  "single original",
+			repos: []Repo{{Fork: false, Size: 100, UpdatedAt: daysAgo(10)}},
+		},
+		{
+			name: "mixed original and fork",
+			repos: []Repo{
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
+				{Fork: true, Size: 500, UpdatedAt: daysAgo(5)},
+				{Fork: false, Size: 60, UpdatedAt: daysAgo(89)},
+				{Fork: false, Size: 20, UpdatedAt: daysAgo(91)},
+				{Fork: false, Size: 0, UpdatedAt: daysAgo(150)},
+			},
+		},
+		{
+			name: "all forks",
+			repos: []Repo{
+				{Fork: true, Size: 100, UpdatedAt: daysAgo(5)},
+				{Fork: true, Size: 200, UpdatedAt: daysAgo(10)},
+			},
+		},
+		{
+			name: "all zero size",
+			repos: []Repo{
+				{Fork: false, Size: 0, UpdatedAt: daysAgo(5)},
+				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
+			},
+		},
+		{
+			name: "boundary recent",
+			repos: []Repo{
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(90)},
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(91)},
+			},
+		},
+		{
+			name: "many repos",
+			repos: func() []Repo {
+				r := make([]Repo, 0, 20)
+				for i := 0; i < 16; i++ {
+					r = append(r, Repo{Fork: false, Size: 100, UpdatedAt: daysAgo(10)})
+				}
+				for i := 0; i < 4; i++ {
+					r = append(r, Repo{Fork: false, Size: 100, UpdatedAt: daysAgo(120)})
+				}
+				return r
+			}(),
+		},
+		{
+			name: "single stale old repo",
+			repos: []Repo{
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(300)},
+			},
+		},
+		{
+			name: "varied activity levels",
+			repos: []Repo{
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(60)},
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(150)},
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(300)},
+			},
+		},
+		{
+			name: "deep threshold boundary",
+			repos: []Repo{
+				{Fork: false, Size: minDepthRepoSize, UpdatedAt: daysAgo(10)},
+				{Fork: false, Size: minDepthRepoSize - 1, UpdatedAt: daysAgo(10)},
+				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
+			},
+		},
+		{
+			name: "ownership mixed valid zero size",
+			repos: []Repo{
+				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
+				{Fork: true, Size: 0, UpdatedAt: daysAgo(10)},
+				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
+				{Fork: true, Size: 100, UpdatedAt: daysAgo(10)},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s1 := ExtractSignals(tc.repos)
+			s2 := ExtractSignalsFromFacts(FromRepos(tc.repos))
+
+			if !almostEqual(s1.Ownership, s2.Ownership) {
+				t.Fatalf("Ownership: ExtractSignals=%.4f ExtractSignalsFromFacts=%.4f", s1.Ownership, s2.Ownership)
+			}
+			if !almostEqual(s1.Consistency, s2.Consistency) {
+				t.Fatalf("Consistency: ExtractSignals=%.4f ExtractSignalsFromFacts=%.4f", s1.Consistency, s2.Consistency)
+			}
+			if !almostEqual(s1.Depth, s2.Depth) {
+				t.Fatalf("Depth: ExtractSignals=%.4f ExtractSignalsFromFacts=%.4f", s1.Depth, s2.Depth)
+			}
+			if !almostEqual(s1.Activity, s2.Activity) {
+				t.Fatalf("Activity: ExtractSignals=%.4f ExtractSignalsFromFacts=%.4f", s1.Activity, s2.Activity)
+			}
+		})
+	}
+}

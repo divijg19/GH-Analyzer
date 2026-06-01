@@ -90,58 +90,26 @@ func (e GitHubAPIError) Error() string {
 }
 
 func ExtractSignals(repos []Repo) Signals {
-	if len(repos) == 0 {
-		return Signals{}
-	}
+	return ExtractSignalsFromFacts(FromRepos(repos))
+}
 
-	now := time.Now()
-	cutoff := now.AddDate(0, 0, -recentWindowDays)
-
-	nonForkCount := 0
-	recentNonForkCount := 0
-	deepRepoCount := 0
-
-	totalValidRepos := 0
-	nonForkValidRepos := 0
-
-	for _, repo := range repos {
-		if repo.Size > 0 {
-			totalValidRepos++
-			if !repo.Fork {
-				nonForkValidRepos++
-			}
-		}
-
-		if !repo.Fork {
-			nonForkCount++
-
-			if !repo.UpdatedAt.Before(cutoff) {
-				recentNonForkCount++
-			}
-
-			if repo.Size >= minDepthRepoSize {
-				deepRepoCount++
-			}
-		}
-	}
-
+func ExtractSignalsFromFacts(f Facts) Signals {
 	consistency := 0.0
 	depth := 0.0
 	ownership := 0.0
 
-	if nonForkCount > 0 {
-		consistencyDen := maxInt(minConsistencyDen, nonForkCount)
-		depthDen := maxInt(minDepthDen, nonForkCount)
-
-		consistency = float64(recentNonForkCount) / float64(consistencyDen)
-		depth = float64(deepRepoCount) / float64(depthDen)
+	if f.OriginalRepos > 0 {
+		consistencyDen := maxInt(minConsistencyDen, f.OriginalRepos)
+		depthDen := maxInt(minDepthDen, f.OriginalRepos)
+		consistency = float64(f.RecentRepos) / float64(consistencyDen)
+		depth = float64(f.DeepRepos) / float64(depthDen)
 	}
 
-	if totalValidRepos > 0 {
-		ownership = float64(nonForkValidRepos) / float64(totalValidRepos)
+	if f.ValidRepos > 0 {
+		ownership = float64(f.ValidOriginalRepos) / float64(f.ValidRepos)
 	}
 
-	activity := activityFromLatestRepo(repos, now)
+	activity := activityFromTime(f.LatestActivity, time.Now())
 
 	return Signals{
 		Ownership:   clamp01(ownership),
@@ -213,6 +181,14 @@ func activityFromLatestRepo(repos []Repo, now time.Time) float64 {
 		if repo.UpdatedAt.After(latest) {
 			latest = repo.UpdatedAt
 		}
+	}
+
+	return activityFromTime(latest, now)
+}
+
+func activityFromTime(latest time.Time, now time.Time) float64 {
+	if latest.IsZero() {
+		return 0
 	}
 
 	daysSinceLastUpdate := int(now.Sub(latest).Hours() / 24)
