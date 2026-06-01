@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/divijg19/GH-Analyzer/internal/profile"
 	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
@@ -23,6 +24,11 @@ func Build(usernames []string) (Index, error) {
 			return Index{}, fmt.Errorf("fetch repos for %q: %w", username, err)
 		}
 
+		meta, err := profile.FetchUserMetadata(username)
+		if err != nil {
+			return Index{}, fmt.Errorf("fetch metadata for %q: %w", username, err)
+		}
+
 		signalValues := signals.ExtractSignals(repos)
 		scores := signals.ScoreSignals(signalValues)
 		report := signals.BuildReport(username, scores, repos)
@@ -30,6 +36,7 @@ func Build(usernames []string) (Index, error) {
 		idx.Add(Profile{
 			Username: username,
 			Signals:  signals.SignalsFromReport(report),
+			Metadata: meta,
 		})
 	}
 
