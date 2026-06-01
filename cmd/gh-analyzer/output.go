@@ -8,6 +8,7 @@ import (
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 func writeJSON(value any) error {
@@ -180,6 +181,41 @@ func printDatasetInfo(path string, indexData indexpkg.Index) {
 
 func printProfileSignals(profile indexpkg.Profile) {
 	fmt.Printf("Profile: %s\n", profile.Username)
+
+	if profile.Facts != nil {
+		fmt.Println()
+		fmt.Println("Facts:")
+		fmt.Printf("  Total repos:       %d\n", profile.Facts.TotalRepos)
+		fmt.Printf("  Original repos:    %d\n", profile.Facts.OriginalRepos)
+		fmt.Printf("  Fork repos:        %d\n", profile.Facts.ForkRepos)
+		fmt.Printf("  Recently active:   %d\n", profile.Facts.RecentRepos)
+		fmt.Printf("  Deep repos:        %d\n", profile.Facts.DeepRepos)
+		fmt.Printf("  Valid repos:       %d\n", profile.Facts.ValidRepos)
+		fmt.Printf("  Valid original:    %d\n", profile.Facts.ValidOriginalRepos)
+		fmt.Printf("  Largest repo:     %d KB\n", profile.Facts.LargestRepoSize)
+		fmt.Printf("  Latest activity:  %s\n", profile.Facts.LatestActivity.Format("2006-01-02"))
+	}
+
+	factDescriptions := map[string]string{}
+	if profile.Facts != nil {
+		sig := signals.Signals{
+			Ownership:   profile.Signals["ownership"],
+			Consistency: profile.Signals["consistency"],
+			Depth:       profile.Signals["depth"],
+			Activity:    profile.Signals["activity"],
+		}
+		evidence := signals.GenerateEvidence(*profile.Facts, sig)
+		for _, group := range evidence {
+			for _, item := range group.Items {
+				if item.Kind == "fact" {
+					factDescriptions[group.Signal] = item.Description
+					break
+				}
+			}
+		}
+	}
+
+	fmt.Println()
 	fmt.Println("Signals:")
 
 	names := make([]string, 0, len(profile.Signals))
@@ -189,7 +225,30 @@ func printProfileSignals(profile indexpkg.Profile) {
 	sort.Strings(names)
 
 	for _, name := range names {
-		fmt.Printf("- %s: %.2f\n", name, profile.Signals[name])
+		if desc, ok := factDescriptions[name]; ok {
+			fmt.Printf("  %-13s  %.2f  (%s)\n", name, profile.Signals[name], desc)
+		} else {
+			fmt.Printf("  %-13s  %.2f\n", name, profile.Signals[name])
+		}
+	}
+
+	if profile.Facts != nil {
+		sig := signals.Signals{
+			Ownership:   profile.Signals["ownership"],
+			Consistency: profile.Signals["consistency"],
+			Depth:       profile.Signals["depth"],
+			Activity:    profile.Signals["activity"],
+		}
+		evidence := signals.GenerateEvidence(*profile.Facts, sig)
+
+		fmt.Println()
+		fmt.Println("Evidence:")
+		for _, group := range evidence {
+			fmt.Printf("  %s:\n", group.Signal)
+			for _, item := range group.Items {
+				fmt.Printf("    - %s\n", item.Description)
+			}
+		}
 	}
 }
 
