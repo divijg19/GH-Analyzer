@@ -1,8 +1,11 @@
 package index
 
+import "github.com/divijg19/GH-Analyzer/internal/signals"
+
 type Profile struct {
 	Username string             `json:"username"`
 	Signals  map[string]float64 `json:"signals"`
+	Facts    *signals.Facts     `json:"facts,omitempty"`
 }
 
 type Index struct {
