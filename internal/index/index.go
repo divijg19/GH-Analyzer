@@ -1,15 +1,17 @@
 package index
 
 import (
+	"github.com/divijg19/GH-Analyzer/internal/contributions"
 	"github.com/divijg19/GH-Analyzer/internal/profile"
 	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 type Profile struct {
-	Username   string              `json:"username"`
-	Signals    map[string]float64  `json:"signals"`
-	Facts      *signals.Facts      `json:"facts,omitempty"`
-	Metadata   *profile.UserMetadata `json:"metadata,omitempty"`
+	Username      string                    `json:"username"`
+	Signals       map[string]float64        `json:"signals"`
+	Facts         *signals.Facts            `json:"facts,omitempty"`
+	Metadata      *profile.UserMetadata     `json:"metadata,omitempty"`
+	Contributions *contributions.Summary    `json:"contributions,omitempty"`
 }
 
 type Index struct {

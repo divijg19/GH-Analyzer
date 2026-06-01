@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/divijg19/GH-Analyzer/internal/github"
 )
 
 const (
@@ -295,7 +297,7 @@ func FetchRepos(username string) ([]Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "gh-analyzer")
+	github.SetHeaders(req)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

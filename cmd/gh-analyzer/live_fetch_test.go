@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/divijg19/GH-Analyzer/internal/contributions"
 	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
@@ -167,16 +168,21 @@ func setupLiveTestGlobals(searchURL string) func() {
 	originalURL := liveRepoSearchURL
 	originalClient := liveHTTPClient
 	originalFetchRepos := fetchReposUser
+	originalFetchContribs := fetchContributionsUser
 
 	liveRepoSearchURL = searchURL
 	liveHTTPClient = http.DefaultClient
 	fetchReposUser = func(username string) ([]signals.Repo, error) {
 		return nil, nil
 	}
+	fetchContributionsUser = func(username string) (*contributions.Summary, error) {
+		return &contributions.Summary{}, nil
+	}
 
 	return func() {
 		liveRepoSearchURL = originalURL
 		liveHTTPClient = originalClient
 		fetchReposUser = originalFetchRepos
+		fetchContributionsUser = originalFetchContribs
 	}
 }

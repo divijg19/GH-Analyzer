@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/divijg19/GH-Analyzer/internal/github"
 )
 
 type UserMetadata struct {
@@ -31,7 +33,7 @@ func FetchUserMetadata(username string) (*UserMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "gh-analyzer")
+	github.SetHeaders(req)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
