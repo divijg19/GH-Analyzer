@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/divijg19/GH-Analyzer/internal/contributions"
+	"github.com/divijg19/GH-Analyzer/internal/github"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
 	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
@@ -17,9 +19,10 @@ const (
 )
 
 var (
-	liveRepoSearchURL = "https://api.github.com/search/repositories"
-	liveHTTPClient    = http.DefaultClient
-	fetchReposUser    = signals.FetchRepos
+	liveRepoSearchURL        = "https://api.github.com/search/repositories"
+	liveHTTPClient           = http.DefaultClient
+	fetchReposUser           = signals.FetchRepos
+	fetchContributionsUser   = contributions.FetchContributions
 )
 
 type repositorySearchResponse struct {
@@ -47,14 +50,23 @@ func buildLiveIndex(query string) (indexpkg.Index, error) {
 			continue
 		}
 
-		signalValues := signals.ExtractSignals(repos)
+		facts := signals.FromRepos(repos)
+
+		contribSummary, err := fetchContributionsUser(username)
+		if err != nil {
+			continue
+		}
+
+		signalValues := signals.ExtractSignalsFromFacts(facts)
 		scores := signals.ScoreSignals(signalValues)
 		report := signals.BuildReport(username, scores, repos)
 		profileSignals := signals.SignalsFromReport(report)
 
 		idx.Add(indexpkg.Profile{
-			Username: username,
-			Signals:  profileSignals,
+			Username:      username,
+			Signals:       profileSignals,
+			Facts:         &facts,
+			Contributions: contribSummary,
 		})
 	}
 
@@ -72,7 +84,7 @@ func fetchLiveUsernames(query string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub data")
 	}
-	req.Header.Set("User-Agent", "gh-analyzer")
+	github.SetHeaders(req)
 
 	resp, err := liveHTTPClient.Do(req)
 	if err != nil {

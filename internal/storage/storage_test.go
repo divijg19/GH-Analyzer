@@ -5,17 +5,54 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/divijg19/GH-Analyzer/internal/contributions"
 	"github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/profile"
+	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 func TestSaveLoadRoundTrip(t *testing.T) {
 	tempDir := t.TempDir()
 	path := filepath.Join(tempDir, "dataset.json")
 
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+
 	input := index.Index{Profiles: []index.Profile{
-		{Username: "alice", Signals: map[string]float64{"consistency": 0.8, "ownership": 0.7, "depth": 0.6}},
-		{Username: "bob", Signals: map[string]float64{"consistency": 0.5, "ownership": 0.9, "depth": 0.4}},
+		{
+			Username: "alice",
+			Signals:  map[string]float64{"consistency": 0.8, "ownership": 0.7, "depth": 0.6, "activity": 0.9},
+			Facts: &signals.Facts{
+				TotalRepos:         42,
+				OriginalRepos:      38,
+				ForkRepos:          4,
+				RecentRepos:        35,
+				DeepRepos:          12,
+				ValidRepos:         39,
+				ValidOriginalRepos: 35,
+				LargestRepoSize:    2048,
+				LatestActivity:     now,
+			},
+			Metadata: &profile.UserMetadata{
+				Name:      "Alice User",
+				Bio:       "Go developer",
+				Location:  "San Francisco",
+				Company:   "@acme",
+				Followers: 150,
+				Following: 80,
+				CreatedAt: now.AddDate(-3, 0, 0),
+			},
+			Contributions: &contributions.Summary{
+				TotalContributions: 200,
+				TotalPullRequests:  120,
+				IssuesOpened:       80,
+			},
+		},
+		{
+			Username: "bob",
+			Signals:  map[string]float64{"consistency": 0.5, "ownership": 0.9, "depth": 0.4, "activity": 0.2},
+		},
 	}}
 
 	if err := Save(path, input); err != nil {
@@ -28,7 +65,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(input, loaded) {
-		t.Fatalf("round trip mismatch: expected %+v, got %+v", input, loaded)
+		t.Fatalf("round trip mismatch:\n  expected %+v\n  got      %+v", input, loaded)
 	}
 }
 

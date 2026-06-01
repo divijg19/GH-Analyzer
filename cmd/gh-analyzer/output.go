@@ -182,6 +182,14 @@ func printDatasetInfo(path string, indexData indexpkg.Index) {
 func printProfileSignals(profile indexpkg.Profile) {
 	fmt.Printf("Profile: %s\n", profile.Username)
 
+	if profile.Contributions != nil {
+		fmt.Println()
+		fmt.Println("Contributions:")
+		fmt.Printf("  Total:            %d\n", profile.Contributions.TotalContributions)
+		fmt.Printf("  Pull requests:    %d\n", profile.Contributions.TotalPullRequests)
+		fmt.Printf("  Issues opened:    %d\n", profile.Contributions.IssuesOpened)
+	}
+
 	if profile.Facts != nil {
 		fmt.Println()
 		fmt.Println("Facts:")
