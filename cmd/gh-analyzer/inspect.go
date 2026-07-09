@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 )
 
 func runInspect(args []string) error {
@@ -42,10 +43,11 @@ func runInspect(args []string) error {
 	if !found {
 		return fmt.Errorf("profile %q not found", username)
 	}
+	proj := projection.BuildCandidateProjection(profile)
 	if *jsonOutput {
-		return writeJSON(profile)
+		return writeJSON(proj)
 	}
-	printProfileSignals(profile)
+	printCandidateProjection(proj)
 
 	return nil
 }

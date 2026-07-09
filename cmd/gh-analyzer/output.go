@@ -8,6 +8,7 @@ import (
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
@@ -179,40 +180,40 @@ func printDatasetInfo(path string, indexData indexpkg.Index) {
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
 }
 
-func printProfileSignals(profile indexpkg.Profile) {
-	fmt.Printf("Profile: %s\n", profile.Username)
+func printCandidateProjection(proj projection.CandidateProjection) {
+	fmt.Printf("Profile: %s\n", proj.Username)
 
-	if profile.Contributions != nil {
+	if proj.Contributions != nil {
 		fmt.Println()
 		fmt.Println("Contributions:")
-		fmt.Printf("  Total:            %d\n", profile.Contributions.TotalContributions)
-		fmt.Printf("  Pull requests:    %d\n", profile.Contributions.TotalPullRequests)
-		fmt.Printf("  Issues opened:    %d\n", profile.Contributions.IssuesOpened)
+		fmt.Printf("  Total:            %d\n", proj.Contributions.TotalContributions)
+		fmt.Printf("  Pull requests:    %d\n", proj.Contributions.TotalPullRequests)
+		fmt.Printf("  Issues opened:    %d\n", proj.Contributions.IssuesOpened)
 	}
 
-	if profile.Facts != nil {
+	if proj.Facts != nil {
 		fmt.Println()
 		fmt.Println("Facts:")
-		fmt.Printf("  Total repos:       %d\n", profile.Facts.TotalRepos)
-		fmt.Printf("  Original repos:    %d\n", profile.Facts.OriginalRepos)
-		fmt.Printf("  Fork repos:        %d\n", profile.Facts.ForkRepos)
-		fmt.Printf("  Recently active:   %d\n", profile.Facts.RecentRepos)
-		fmt.Printf("  Deep repos:        %d\n", profile.Facts.DeepRepos)
-		fmt.Printf("  Valid repos:       %d\n", profile.Facts.ValidRepos)
-		fmt.Printf("  Valid original:    %d\n", profile.Facts.ValidOriginalRepos)
-		fmt.Printf("  Largest repo:     %d KB\n", profile.Facts.LargestRepoSize)
-		fmt.Printf("  Latest activity:  %s\n", profile.Facts.LatestActivity.Format("2006-01-02"))
+		fmt.Printf("  Total repos:       %d\n", proj.Facts.TotalRepos)
+		fmt.Printf("  Original repos:    %d\n", proj.Facts.OriginalRepos)
+		fmt.Printf("  Fork repos:        %d\n", proj.Facts.ForkRepos)
+		fmt.Printf("  Recently active:   %d\n", proj.Facts.RecentRepos)
+		fmt.Printf("  Deep repos:        %d\n", proj.Facts.DeepRepos)
+		fmt.Printf("  Valid repos:       %d\n", proj.Facts.ValidRepos)
+		fmt.Printf("  Valid original:    %d\n", proj.Facts.ValidOriginalRepos)
+		fmt.Printf("  Largest repo:     %d KB\n", proj.Facts.LargestRepoSize)
+		fmt.Printf("  Latest activity:  %s\n", proj.Facts.LatestActivity.Format("2006-01-02"))
 	}
 
 	factDescriptions := map[string]string{}
-	if profile.Facts != nil {
+	if proj.Facts != nil {
 		sig := signals.Signals{
-			Ownership:   profile.Signals["ownership"],
-			Consistency: profile.Signals["consistency"],
-			Depth:       profile.Signals["depth"],
-			Activity:    profile.Signals["activity"],
+			Ownership:   proj.Signals["ownership"],
+			Consistency: proj.Signals["consistency"],
+			Depth:       proj.Signals["depth"],
+			Activity:    proj.Signals["activity"],
 		}
-		evidence := signals.GenerateEvidence(*profile.Facts, sig)
+		evidence := signals.GenerateEvidence(*proj.Facts, sig)
 		for _, group := range evidence {
 			for _, item := range group.Items {
 				if item.Kind == "fact" {
@@ -226,28 +227,28 @@ func printProfileSignals(profile indexpkg.Profile) {
 	fmt.Println()
 	fmt.Println("Signals:")
 
-	names := make([]string, 0, len(profile.Signals))
-	for name := range profile.Signals {
+	names := make([]string, 0, len(proj.Signals))
+	for name := range proj.Signals {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
 	for _, name := range names {
 		if desc, ok := factDescriptions[name]; ok {
-			fmt.Printf("  %-13s  %.2f  (%s)\n", name, profile.Signals[name], desc)
+			fmt.Printf("  %-13s  %.2f  (%s)\n", name, proj.Signals[name], desc)
 		} else {
-			fmt.Printf("  %-13s  %.2f\n", name, profile.Signals[name])
+			fmt.Printf("  %-13s  %.2f\n", name, proj.Signals[name])
 		}
 	}
 
-	if profile.Facts != nil {
+	if proj.Facts != nil {
 		sig := signals.Signals{
-			Ownership:   profile.Signals["ownership"],
-			Consistency: profile.Signals["consistency"],
-			Depth:       profile.Signals["depth"],
-			Activity:    profile.Signals["activity"],
+			Ownership:   proj.Signals["ownership"],
+			Consistency: proj.Signals["consistency"],
+			Depth:       proj.Signals["depth"],
+			Activity:    proj.Signals["activity"],
 		}
-		evidence := signals.GenerateEvidence(*profile.Facts, sig)
+		evidence := signals.GenerateEvidence(*proj.Facts, sig)
 
 		fmt.Println()
 		fmt.Println("Evidence:")
