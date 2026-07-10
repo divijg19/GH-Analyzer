@@ -145,74 +145,61 @@ func TestExtractSignalsEdgeCases(t *testing.T) {
 	})
 }
 
-func TestScoreSignalsWeightsAndPenalty(t *testing.T) {
+func TestScoreSignalsComponents(t *testing.T) {
 	scores := ScoreSignals(Signals{Consistency: 1, Ownership: 0, Depth: 0})
-	if scores.Overall != 40 {
-		t.Fatalf("expected overall 40 with 0.4 consistency weight, got %d", scores.Overall)
+	if scores.Consistency != 100 {
+		t.Fatalf("expected consistency 100, got %d", scores.Consistency)
 	}
-
-	reportWithPenalty := BuildReport("user", Scores{Consistency: 100, Ownership: 100, Depth: 100, Overall: 100}, []Repo{
-		{Fork: false, Size: 100, UpdatedAt: daysAgo(5)},
-		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
-	})
-	if reportWithPenalty.Scores.Overall != 70 {
-		t.Fatalf("expected penalized overall 70 for dataset < 3 repos, got %d", reportWithPenalty.Scores.Overall)
+	if scores.Ownership != 0 {
+		t.Fatalf("expected ownership 0, got %d", scores.Ownership)
 	}
-
-	reportAlreadyPenalized := BuildReport("user", Scores{Consistency: 100, Ownership: 100, Depth: 100, Overall: 70}, []Repo{
-		{Fork: false, Size: 100, UpdatedAt: daysAgo(5)},
-		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
-	})
-	if reportAlreadyPenalized.Scores.Overall != 70 {
-		t.Fatalf("expected overall to remain 70 when already penalized, got %d", reportAlreadyPenalized.Scores.Overall)
+	if scores.Depth != 0 {
+		t.Fatalf("expected depth 0, got %d", scores.Depth)
 	}
 }
 
-func TestSignalsFromReportUsesRawSignalValues(t *testing.T) {
-	report := Report{
-		Scores: Scores{Consistency: 100, Ownership: 100, Depth: 100},
-		SignalValues: Signals{
-			Consistency: 0.23,
-			Ownership:   0.61,
-			Depth:       0.47,
-			Activity:    0.7,
-		},
-		HasSignalValues: true,
+func TestSignalsToMap(t *testing.T) {
+	sig := Signals{
+		Ownership:   0.65,
+		Consistency: 0.82,
+		Depth:       0.47,
+		Activity:    0.7,
 	}
 
-	s := SignalsFromReport(report)
-	if !almostEqual(s["consistency"], 0.23) {
-		t.Fatalf("expected consistency 0.23, got %.2f", s["consistency"])
+	m := SignalsToMap(sig)
+
+	if !almostEqual(m["ownership"], 0.65) {
+		t.Fatalf("expected ownership 0.65, got %.2f", m["ownership"])
 	}
-	if !almostEqual(s["ownership"], 0.61) {
-		t.Fatalf("expected ownership 0.61, got %.2f", s["ownership"])
+	if !almostEqual(m["consistency"], 0.82) {
+		t.Fatalf("expected consistency 0.82, got %.2f", m["consistency"])
 	}
-	if !almostEqual(s["depth"], 0.47) {
-		t.Fatalf("expected depth 0.47, got %.2f", s["depth"])
+	if !almostEqual(m["depth"], 0.47) {
+		t.Fatalf("expected depth 0.47, got %.2f", m["depth"])
 	}
-	if !almostEqual(s["activity"], 0.7) {
-		t.Fatalf("expected activity 0.70, got %.2f", s["activity"])
+	if !almostEqual(m["activity"], 0.7) {
+		t.Fatalf("expected activity 0.70, got %.2f", m["activity"])
 	}
 }
 
-func TestSignalsFromReportFallbackNormalization(t *testing.T) {
-	report := Report{
-		Scores: Scores{Consistency: 120, Ownership: -10, Depth: 50},
+func TestSignalsToMapClampsValues(t *testing.T) {
+	sig := Signals{
+		Ownership:   1.5,
+		Consistency: -0.2,
+		Depth:       0.5,
+		Activity:    2.0,
 	}
 
-	s := SignalsFromReport(report)
+	m := SignalsToMap(sig)
 
-	if s["consistency"] != 1.0 {
-		t.Fatalf("expected consistency 1.0, got %.2f", s["consistency"])
+	if m["ownership"] != 1.0 {
+		t.Fatalf("expected ownership clamped to 1.0, got %.2f", m["ownership"])
 	}
-	if s["ownership"] != 0.0 {
-		t.Fatalf("expected ownership 0.0, got %.2f", s["ownership"])
+	if m["consistency"] != 0.0 {
+		t.Fatalf("expected consistency clamped to 0.0, got %.2f", m["consistency"])
 	}
-	if s["depth"] != 0.5 {
-		t.Fatalf("expected depth 0.5, got %.2f", s["depth"])
-	}
-	if s["activity"] != 1.0 {
-		t.Fatalf("expected fallback activity 1.0, got %.2f", s["activity"])
+	if m["activity"] != 1.0 {
+		t.Fatalf("expected activity clamped to 1.0, got %.2f", m["activity"])
 	}
 }
 

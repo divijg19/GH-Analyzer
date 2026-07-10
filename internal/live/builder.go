@@ -67,12 +67,10 @@ func buildLiveProfile(ctx context.Context, username string) (indexpkg.Profile, e
 	contribSummary := acquisition.NormalizeContributions(contribDTO)
 
 	signalValues := signals.ExtractSignalsFromFacts(facts)
-	scores := signals.ScoreSignals(signalValues)
-	report := signals.BuildReport(username, scores, repos)
 
 	return indexpkg.Profile{
 		Username:      username,
-		Signals:       signals.SignalsFromReport(report),
+		Signals:       signals.SignalsToMap(signalValues),
 		Facts:         &facts,
 		Metadata:      meta,
 		Contributions: contribSummary,

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,17 +13,16 @@ import (
 
 	"github.com/divijg19/GH-Analyzer/internal/acquisition"
 	"github.com/divijg19/GH-Analyzer/internal/engine"
+	"github.com/divijg19/GH-Analyzer/internal/evaluation"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 	searchpkg "github.com/divijg19/GH-Analyzer/internal/search"
-	"github.com/divijg19/GH-Analyzer/internal/signals"
 	"github.com/divijg19/GH-Analyzer/internal/storage"
 )
 
 const (
-	serverAddr                   = ":8080"
-	defaultDatasetPath           = "dataset.json"
-	minReposForFullScore         = 3
-	smallSampleOverallMultiplier = 0.7
+	serverAddr         = ":8080"
+	defaultDatasetPath = "dataset.json"
 )
 
 var (
@@ -42,18 +40,10 @@ type errorResponse struct {
 }
 
 type searchResponse struct {
-	Query   string               `json:"query"`
-	Mode    string               `json:"mode"`
-	Total   int                  `json:"total"`
-	Results []searchResultRecord `json:"results"`
-}
-
-type searchResultRecord struct {
-	Username   string             `json:"username"`
-	Score      float64            `json:"score"`
-	Confidence string             `json:"confidence"`
-	Signals    map[string]float64 `json:"signals"`
-	Reasons    []string           `json:"reasons"`
+	Query   string                        `json:"query"`
+	Mode    string                        `json:"mode"`
+	Total   int                           `json:"total"`
+	Results []projection.SearchProjection `json:"results"`
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {
@@ -117,16 +107,13 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repos := acquisition.NormalizeRepos(repoDTOs)
-
-	signalValues := signals.ExtractSignals(repos)
-	scores := signals.ScoreSignals(signalValues)
-	if len(repos) < minReposForFullScore {
-		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
+	proj, err := projection.BuildAnalyzeProjection(username, repos)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to build analysis")
+		return
 	}
 
-	report := signals.BuildReport(username, scores, repos)
-
-	writeJSONResponse(w, http.StatusOK, report)
+	writeJSONResponse(w, http.StatusOK, proj)
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -183,46 +170,24 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseResults := make([]searchResultRecord, 0, len(results))
-	for _, result := range results {
-		record := searchResultRecord{
-			Username:   result.Profile.Username,
-			Score:      result.Score,
-			Confidence: confidenceFromScore(result.Score),
-			Signals:    cloneSignals(result.Profile.Signals),
-			Reasons:    append([]string{}, result.Reasons...),
-		}
-		responseResults = append(responseResults, record)
+	projections := make([]projection.SearchProjection, len(results))
+	for i, result := range results {
+		projections[i] = projection.BuildSearchProjection(
+			result.Profile,
+			result.Score,
+			evaluation.ClassifyConfidence(result.Score),
+			result.Reasons,
+		)
 	}
 
 	response := searchResponse{
 		Query:   query,
 		Mode:    mode,
-		Total:   len(responseResults),
-		Results: responseResults,
+		Total:   len(projections),
+		Results: projections,
 	}
 
 	writeJSONResponse(w, http.StatusOK, response)
-}
-
-func cloneSignals(in map[string]float64) map[string]float64 {
-	out := make(map[string]float64, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-
-	return out
-}
-
-func confidenceFromScore(score float64) string {
-	switch {
-	case score > 0.75:
-		return "high"
-	case score > 0.50:
-		return "moderate"
-	default:
-		return "low"
-	}
 }
 
 func main() {

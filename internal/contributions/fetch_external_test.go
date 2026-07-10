@@ -20,18 +20,18 @@ func TestFetchContributionsSuccess(t *testing.T) {
 		callCount++
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.RawQuery == "q=testuser+type:pr&per_page=1" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"total_count": 85,
 				"items":       []interface{}{},
 			})
 		} else if r.URL.RawQuery == "q=testuser+type:issue&per_page=1" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"total_count": 65,
 				"items":       []interface{}{},
 			})
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"message": "unexpected query"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"message": "unexpected query"})
 		}
 	}))
 	defer server.Close()
@@ -58,7 +58,7 @@ func TestFetchContributionsSuccess(t *testing.T) {
 func TestFetchContributionsEmpty(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"total_count": 0,
 			"items":       []interface{}{},
 		})
@@ -81,7 +81,7 @@ func TestFetchContributionsNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
 	}))
 	defer server.Close()
 
@@ -107,7 +107,7 @@ func TestFetchContributionsBadJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not json`))
+		_, _ = w.Write([]byte(`not json`))
 	}))
 	defer server.Close()
 
@@ -133,7 +133,7 @@ func TestFetchContributionsFirstCallFailsSecondSucceeds(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"total_count": 10,
 			"items":       []interface{}{},
 		})

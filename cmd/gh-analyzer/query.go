@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
+	"github.com/divijg19/GH-Analyzer/internal/evaluation"
 	"github.com/divijg19/GH-Analyzer/internal/presets"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 	searchpkg "github.com/divijg19/GH-Analyzer/internal/search"
 )
 
@@ -108,16 +110,27 @@ func runQuery(args []string) error {
 	query := fullQuery
 	query.Limit = resolvedLimit
 	results := runner.Query(indexData, query)
+
+	projections := make([]projection.SearchProjection, len(results))
+	for i, result := range results {
+		projections[i] = projection.BuildSearchProjection(
+			result.Profile,
+			result.Score,
+			evaluation.ClassifyConfidence(result.Score),
+			result.Reasons,
+		)
+	}
+
 	if *jsonOutput {
-		return writeJSON(results)
+		return writeJSON(projections)
 	}
 
 	printFilters(query, activePreset, resolvedLimit)
-	printMatchSummary(totalMatches, len(results), resolvedLimit)
+	printMatchSummary(totalMatches, len(projections), resolvedLimit)
 	if *compactOutput {
-		printCompactResults(results)
+		printCompactSearchProjections(projections)
 	} else {
-		printTopMatches(results)
+		printTopSearchProjections(projections)
 	}
 
 	return nil

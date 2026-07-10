@@ -1,28 +1,14 @@
 package signals
 
-func SignalsFromReport(report Report) map[string]float64 {
-	consistency := clamp01(float64(report.Scores.Consistency) / scoreScale)
-	ownership := clamp01(float64(report.Scores.Ownership) / scoreScale)
-	depth := clamp01(float64(report.Scores.Depth) / scoreScale)
-	activity := 0.0
-
-	if report.HasSignalValues {
-		consistency = clamp01(report.SignalValues.Consistency)
-		ownership = clamp01(report.SignalValues.Ownership)
-		depth = clamp01(report.SignalValues.Depth)
-		activity = clamp01(report.SignalValues.Activity)
-	} else if consistency > 0 {
-		activity = 1.0
+// SignalsToMap converts a Signals struct to a map[string]float64
+// suitable for storage in Profile and use by the query engine.
+func SignalsToMap(s Signals) map[string]float64 {
+	return map[string]float64{
+		"ownership":   clamp01(s.Ownership),
+		"consistency": clamp01(s.Consistency),
+		"depth":       clamp01(s.Depth),
+		"activity":    clamp01(s.Activity),
 	}
-
-	signals := map[string]float64{
-		"consistency": consistency,
-		"ownership":   ownership,
-		"depth":       depth,
-		"activity":    activity,
-	}
-
-	return signals
 }
 
 func clamp01(value float64) float64 {

@@ -43,11 +43,11 @@ func runInspect(args []string) error {
 	if !found {
 		return fmt.Errorf("profile %q not found", username)
 	}
-	proj := projection.BuildCandidateProjection(profile)
+	proj := projection.BuildInspectProjection(profile)
 	if *jsonOutput {
 		return writeJSON(proj)
 	}
-	printCandidateProjection(proj)
+	printInspectProjection(proj)
 
 	return nil
 }

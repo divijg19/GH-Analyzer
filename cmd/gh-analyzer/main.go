@@ -9,12 +9,10 @@ import (
 )
 
 const (
-	minReposForFullScore         = 3
-	smallSampleOverallMultiplier = 0.7
-	defaultDatasetPath           = "dataset.json"
-	defaultQueryLimit            = 10
-	defaultQueryPreset           = "strong"
-	cliVersion                   = "v0.8.11"
+	defaultDatasetPath = "dataset.json"
+	defaultQueryLimit  = 10
+	defaultQueryPreset = "strong"
+	cliVersion         = "v0.8.12"
 )
 
 func main() {

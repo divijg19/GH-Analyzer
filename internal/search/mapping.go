@@ -156,7 +156,3 @@ func parseConditionFromTokens(tokens []string, start int) (engine.Condition, int
 
 	return engine.Condition{}, 0, false, nil
 }
-
-func parseCondition(raw string) (engine.Condition, error) {
-	return ParseCondition(raw)
-}
