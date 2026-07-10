@@ -9,7 +9,6 @@ import (
 	"github.com/divijg19/GH-Analyzer/internal/engine"
 	indexpkg "github.com/divijg19/GH-Analyzer/internal/index"
 	"github.com/divijg19/GH-Analyzer/internal/projection"
-	"github.com/divijg19/GH-Analyzer/internal/signals"
 )
 
 func writeJSON(value any) error {
@@ -44,94 +43,94 @@ func printMatchSummary(totalMatches, shownCount, limit int) {
 	fmt.Println()
 }
 
-func printTopMatches(results []engine.Result) {
+func printTopSearchProjections(projections []projection.SearchProjection) {
 	fmt.Println("Top candidates")
 	fmt.Println()
 
-	if len(results) == 0 {
+	if len(projections) == 0 {
 		fmt.Println("No matches found. Try lowering constraints.")
 		return
 	}
 
-	printDetailedResultList(results, 1, false)
+	printDetailedProjectionList(projections, 1, false)
 }
 
-func printGroupedCandidates(results []engine.Result) {
+func printGroupedSearchProjections(projections []projection.SearchProjection) {
 	fmt.Println("Top candidates")
 	fmt.Println()
 
-	if len(results) == 0 {
+	if len(projections) == 0 {
 		fmt.Println("No candidates found. Try broader search input.")
 		return
 	}
 
-	high := make([]engine.Result, 0, len(results))
-	moderate := make([]engine.Result, 0, len(results))
-	low := make([]engine.Result, 0, len(results))
+	high := make([]projection.SearchProjection, 0, len(projections))
+	moderate := make([]projection.SearchProjection, 0, len(projections))
+	low := make([]projection.SearchProjection, 0, len(projections))
 
-	for _, result := range results {
-		switch confidenceLabel(result.Score) {
+	for _, proj := range projections {
+		switch proj.Confidence {
 		case "high":
-			high = append(high, result)
+			high = append(high, proj)
 		case "moderate":
-			moderate = append(moderate, result)
+			moderate = append(moderate, proj)
 		default:
-			low = append(low, result)
+			low = append(low, proj)
 		}
 	}
 
 	nextRank := 1
 	if len(high) > 0 {
 		fmt.Println("High confidence")
-		nextRank = printDetailedResultList(high, nextRank, true)
+		nextRank = printDetailedProjectionList(high, nextRank, true)
 	}
 	if len(moderate) > 0 {
 		fmt.Println("Moderate confidence")
-		nextRank = printDetailedResultList(moderate, nextRank, true)
+		nextRank = printDetailedProjectionList(moderate, nextRank, true)
 	}
 	if len(low) > 0 {
 		fmt.Println("Low confidence")
-		_ = printDetailedResultList(low, nextRank, true)
+		_ = printDetailedProjectionList(low, nextRank, true)
 	}
 }
 
-func printCompactResults(results []engine.Result) {
-	if len(results) == 0 {
+func printCompactSearchProjections(projections []projection.SearchProjection) {
+	if len(projections) == 0 {
 		fmt.Println("No results")
 		return
 	}
 
-	nameWidth := maxUsernameWidth(results)
-	for i, result := range results {
-		fmt.Printf("%d. %-*s  %.2f\n", i+1, nameWidth, result.Profile.Username, result.Score)
+	nameWidth := maxProjectionUsernameWidth(projections)
+	for i, proj := range projections {
+		fmt.Printf("%d. %-*s  %.2f\n", i+1, nameWidth, proj.Username, proj.Score)
 	}
 }
 
-func printDetailedResultList(results []engine.Result, startRank int, includeConfidence bool) int {
-	nameWidth := maxUsernameWidth(results)
+func printDetailedProjectionList(projections []projection.SearchProjection, startRank int, includeConfidence bool) int {
+	nameWidth := maxProjectionUsernameWidth(projections)
 
-	for i, result := range results {
+	for i, proj := range projections {
 		rank := startRank + i
 		if includeConfidence {
-			fmt.Printf("%d. %-*s  %.2f (%s)\n", rank, nameWidth, result.Profile.Username, result.Score, confidenceLabel(result.Score))
+			fmt.Printf("%d. %-*s  %.2f (%s)\n", rank, nameWidth, proj.Username, proj.Score, proj.Confidence)
 		} else {
-			fmt.Printf("%d. %-*s  %.2f\n", rank, nameWidth, result.Profile.Username, result.Score)
+			fmt.Printf("%d. %-*s  %.2f\n", rank, nameWidth, proj.Username, proj.Score)
 		}
 		fmt.Println("   Why:")
-		for _, reason := range result.Reasons {
+		for _, reason := range proj.Reasons {
 			fmt.Printf("   - %s\n", reason)
 		}
 		fmt.Println()
 	}
 
-	return startRank + len(results)
+	return startRank + len(projections)
 }
 
-func maxUsernameWidth(results []engine.Result) int {
+func maxProjectionUsernameWidth(projections []projection.SearchProjection) int {
 	width := 1
-	for _, result := range results {
-		if len(result.Profile.Username) > width {
-			width = len(result.Profile.Username)
+	for _, proj := range projections {
+		if len(proj.Username) > width {
+			width = len(proj.Username)
 		}
 	}
 
@@ -180,8 +179,22 @@ func printDatasetInfo(path string, indexData indexpkg.Index) {
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
 }
 
-func printCandidateProjection(proj projection.CandidateProjection) {
+func printInspectProjection(proj projection.InspectProjection) {
 	fmt.Printf("Profile: %s\n", proj.Username)
+
+	if proj.Metadata != nil {
+		fmt.Println()
+		fmt.Println("Metadata:")
+		if proj.Metadata.Name != "" {
+			fmt.Printf("  Name:      %s\n", proj.Metadata.Name)
+		}
+		if proj.Metadata.Company != "" {
+			fmt.Printf("  Company:   %s\n", proj.Metadata.Company)
+		}
+		if proj.Metadata.Location != "" {
+			fmt.Printf("  Location:  %s\n", proj.Metadata.Location)
+		}
+	}
 
 	if proj.Contributions != nil {
 		fmt.Println()
@@ -205,25 +218,6 @@ func printCandidateProjection(proj projection.CandidateProjection) {
 		fmt.Printf("  Latest activity:  %s\n", proj.Facts.LatestActivity.Format("2006-01-02"))
 	}
 
-	factDescriptions := map[string]string{}
-	if proj.Facts != nil {
-		sig := signals.Signals{
-			Ownership:   proj.Signals["ownership"],
-			Consistency: proj.Signals["consistency"],
-			Depth:       proj.Signals["depth"],
-			Activity:    proj.Signals["activity"],
-		}
-		evidence := signals.GenerateEvidence(*proj.Facts, sig)
-		for _, group := range evidence {
-			for _, item := range group.Items {
-				if item.Kind == "fact" {
-					factDescriptions[group.Signal] = item.Description
-					break
-				}
-			}
-		}
-	}
-
 	fmt.Println()
 	fmt.Println("Signals:")
 
@@ -234,25 +228,13 @@ func printCandidateProjection(proj projection.CandidateProjection) {
 	sort.Strings(names)
 
 	for _, name := range names {
-		if desc, ok := factDescriptions[name]; ok {
-			fmt.Printf("  %-13s  %.2f  (%s)\n", name, proj.Signals[name], desc)
-		} else {
-			fmt.Printf("  %-13s  %.2f\n", name, proj.Signals[name])
-		}
+		fmt.Printf("  %-13s  %.2f\n", name, proj.Signals[name])
 	}
 
-	if proj.Facts != nil {
-		sig := signals.Signals{
-			Ownership:   proj.Signals["ownership"],
-			Consistency: proj.Signals["consistency"],
-			Depth:       proj.Signals["depth"],
-			Activity:    proj.Signals["activity"],
-		}
-		evidence := signals.GenerateEvidence(*proj.Facts, sig)
-
+	if len(proj.Evidence) > 0 {
 		fmt.Println()
 		fmt.Println("Evidence:")
-		for _, group := range evidence {
+		for _, group := range proj.Evidence {
 			fmt.Printf("  %s:\n", group.Signal)
 			for _, item := range group.Items {
 				fmt.Printf("    - %s\n", item.Description)
@@ -350,15 +332,4 @@ func printSignalStatBlock(signal string, stats signalStats) {
 	fmt.Printf("  avg: %.2f\n", stats.Avg[signal])
 	fmt.Printf("  min: %.2f\n", stats.Min[signal])
 	fmt.Printf("  max: %.2f\n", stats.Max[signal])
-}
-
-func confidenceLabel(score float64) string {
-	switch {
-	case score > 0.75:
-		return "high"
-	case score > 0.50:
-		return "moderate"
-	default:
-		return "low"
-	}
 }

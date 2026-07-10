@@ -145,7 +145,7 @@ func TestFetchLiveUsernamesLimitEnforced(t *testing.T) {
 	payload := `{"items":[` + strings.Join(items, ",") + `]}`
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(payload))
+		_, _ = w.Write([]byte(payload))
 	}))
 	defer server.Close()
 
@@ -171,7 +171,7 @@ func TestFetchLiveUsernamesLimitEnforced(t *testing.T) {
 func TestFetchLiveUsernamesAPIFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"message":"rate limit"}`))
+		_, _ = w.Write([]byte(`{"message":"rate limit"}`))
 	}))
 	defer server.Close()
 

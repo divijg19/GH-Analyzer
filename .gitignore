@@ -1,6 +1,12 @@
 # Dataset
 dataset.json
 
+# Binaries
+gh-analyzer
+
+# Coverage
+coverage.out
+
 # Logs
 logs
 *.log

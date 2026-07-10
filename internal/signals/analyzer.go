@@ -1,10 +1,7 @@
 package signals
 
 import (
-	"fmt"
 	"math"
-	"sort"
-	"strings"
 	"time"
 )
 
@@ -23,22 +20,12 @@ const (
 	activityLowValue      = 0.4
 	activityStaleValue    = 0.1
 
-	smallSampleRepoThreshold     = 3
-	smallSamplePenaltyMultiplier = 0.7
-	scoreScale                   = 100.0
-	minSignalValue               = 0.0
-	maxSignalValue               = 1.0
-	ownershipWeight              = 0.3
-	consistencyWeight            = 0.4
-	depthWeight                  = 0.3
-
-	strongScoreThreshold   = 70
-	moderateScoreThreshold = 40
-
-	highlightConsistency = "Active in last 90 days"
-	highlightOwnership   = "Majority original repositories"
-	highlightDepth       = "Includes non-trivial projects"
-	topRepoLimit         = 3
+	scoreScale        = 100.0
+	minSignalValue    = 0.0
+	maxSignalValue    = 1.0
+	ownershipWeight   = 0.3
+	consistencyWeight = 0.4
+	depthWeight       = 0.3
 )
 
 type Repo struct {
@@ -55,27 +42,10 @@ type Signals struct {
 	Activity    float64
 }
 
-type Scores struct {
+type RawScore struct {
 	Ownership   int `json:"ownership"`
 	Consistency int `json:"consistency"`
 	Depth       int `json:"depth"`
-	Overall     int `json:"overall"`
-}
-
-type Report struct {
-	Username   string    `json:"username"`
-	Scores     Scores    `json:"scores"`
-	Summary    string    `json:"summary"`
-	Highlights []string  `json:"highlights"`
-	TopRepos   []TopRepo `json:"top_repos"`
-
-	SignalValues    Signals `json:"-"`
-	HasSignalValues bool    `json:"-"`
-}
-
-type TopRepo struct {
-	Name string `json:"name"`
-	Size int    `json:"size"`
 }
 
 type GitHubAPIError struct {
@@ -117,71 +87,16 @@ func ExtractSignalsFromFacts(f Facts) Signals {
 	}
 }
 
-func ScoreSignals(signals Signals) Scores {
+func ScoreSignals(signals Signals) RawScore {
 	ownership := signalToScore(signals.Ownership)
 	consistency := signalToScore(signals.Consistency)
 	depth := signalToScore(signals.Depth)
 
-	overallFloat :=
-		(float64(consistency) * consistencyWeight) +
-			(float64(ownership) * ownershipWeight) +
-			(float64(depth) * depthWeight)
-
-	return Scores{
+	return RawScore{
 		Ownership:   ownership,
 		Consistency: consistency,
 		Depth:       depth,
-		Overall:     int(math.Round(overallFloat)),
 	}
-}
-
-func BuildReport(username string, scores Scores, repos []Repo) Report {
-	signalValues := ExtractSignals(repos)
-	scores = applySmallSamplePenalty(scores, len(repos))
-
-	return Report{
-		Username:        username,
-		Scores:          scores,
-		Summary:         buildSummary(scores),
-		Highlights:      buildHighlights(scores),
-		TopRepos:        extractTopRepos(repos),
-		SignalValues:    signalValues,
-		HasSignalValues: true,
-	}
-}
-
-func applySmallSamplePenalty(scores Scores, repoCount int) Scores {
-	if repoCount >= smallSampleRepoThreshold {
-		return scores
-	}
-
-	baselineOverall := int(math.Round(
-		(float64(scores.Consistency) * consistencyWeight) +
-			(float64(scores.Ownership) * ownershipWeight) +
-			(float64(scores.Depth) * depthWeight),
-	))
-
-	if scores.Overall < baselineOverall {
-		return scores
-	}
-
-	scores.Overall = int(math.Round(float64(scores.Overall) * smallSamplePenaltyMultiplier))
-	return scores
-}
-
-func activityFromLatestRepo(repos []Repo, now time.Time) float64 {
-	if len(repos) == 0 {
-		return 0
-	}
-
-	latest := repos[0].UpdatedAt
-	for _, repo := range repos[1:] {
-		if repo.UpdatedAt.After(latest) {
-			latest = repo.UpdatedAt
-		}
-	}
-
-	return activityFromTime(latest, now)
 }
 
 func activityFromTime(latest time.Time, now time.Time) float64 {
@@ -209,66 +124,6 @@ func maxInt(a, b int) int {
 	}
 
 	return b
-}
-
-func extractTopRepos(repos []Repo) []TopRepo {
-	topRepos := make([]TopRepo, 0, len(repos))
-
-	for _, repo := range repos {
-		if repo.Fork {
-			continue
-		}
-
-		topRepos = append(topRepos, TopRepo{
-			Name: repo.Name,
-			Size: repo.Size,
-		})
-	}
-
-	sort.Slice(topRepos, func(i, j int) bool {
-		return topRepos[i].Size > topRepos[j].Size
-	})
-
-	if len(topRepos) > topRepoLimit {
-		topRepos = topRepos[:topRepoLimit]
-	}
-
-	return topRepos
-}
-
-func buildSummary(scores Scores) string {
-	consistency := scoreLevel(scores.Consistency)
-	ownership := strings.ToLower(scoreLevel(scores.Ownership))
-	depth := strings.ToLower(scoreLevel(scores.Depth))
-
-	return fmt.Sprintf("%s consistency, %s ownership, %s depth", consistency, ownership, depth)
-}
-
-func buildHighlights(scores Scores) []string {
-	highlights := []string{}
-
-	if scores.Consistency > strongScoreThreshold {
-		highlights = append(highlights, highlightConsistency)
-	}
-	if scores.Ownership > strongScoreThreshold {
-		highlights = append(highlights, highlightOwnership)
-	}
-	if scores.Depth > strongScoreThreshold {
-		highlights = append(highlights, highlightDepth)
-	}
-
-	return highlights
-}
-
-func scoreLevel(score int) string {
-	if score > strongScoreThreshold {
-		return "Strong"
-	}
-	if score >= moderateScoreThreshold {
-		return "Moderate"
-	}
-
-	return "Low"
 }
 
 func signalToScore(value float64) int {

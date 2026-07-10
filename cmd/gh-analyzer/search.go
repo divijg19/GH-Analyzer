@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/divijg19/GH-Analyzer/internal/engine"
+	"github.com/divijg19/GH-Analyzer/internal/evaluation"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 	searchpkg "github.com/divijg19/GH-Analyzer/internal/search"
 )
 
@@ -90,7 +92,7 @@ func runSearch(args []string) error {
 
 	if liveMode && liveCandidateCount == 0 {
 		if *jsonOutput {
-			return writeJSON([]engine.Result{})
+			return writeJSON([]projection.SearchProjection{})
 		}
 		fmt.Println("No candidates found.")
 		return nil
@@ -101,15 +103,25 @@ func runSearch(args []string) error {
 		results = results[:resolvedLimit]
 	}
 
+	projections := make([]projection.SearchProjection, len(results))
+	for i, result := range results {
+		projections[i] = projection.BuildSearchProjection(
+			result.Profile,
+			result.Score,
+			evaluation.ClassifyConfidence(result.Score),
+			result.Reasons,
+		)
+	}
+
 	if *jsonOutput {
-		return writeJSON(results)
+		return writeJSON(projections)
 	}
 
 	printMatchSummary(len(allResults), len(results), resolvedLimit)
 	if *compactOutput {
-		printCompactResults(results)
+		printCompactSearchProjections(projections)
 	} else {
-		printGroupedCandidates(results)
+		printGroupedSearchProjections(projections)
 	}
 	return nil
 }

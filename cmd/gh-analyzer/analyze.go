@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/divijg19/GH-Analyzer/internal/acquisition"
-	"github.com/divijg19/GH-Analyzer/internal/signals"
+	"github.com/divijg19/GH-Analyzer/internal/projection"
 )
 
 type analyzeOptions struct {
@@ -28,21 +27,21 @@ func runAnalyze(args []string) error {
 		return nil
 	}
 
-	report, err := analyzeUser(options.Username)
+	proj, err := analyzeUser(options.Username)
 	if err != nil {
 		return err
 	}
 
 	if options.JSON {
-		return writeJSON(report)
+		return writeJSON(proj)
 	}
 
-	output, err := json.MarshalIndent(report, "", "  ")
+	output, err := json.MarshalIndent(proj, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Report: %s\n\n", report.Username)
+	fmt.Printf("Analysis: %s\n\n", proj.Username)
 	fmt.Println(string(output))
 
 	return nil
@@ -80,9 +79,9 @@ func parseAnalyzeArgs(args []string) (analyzeOptions, bool, error) {
 	return options, false, nil
 }
 
-func analyzeUser(username string) (signals.Report, error) {
+func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 	if strings.TrimSpace(username) == "" {
-		return signals.Report{}, fmt.Errorf("missing GitHub username")
+		return projection.AnalyzeProjection{}, fmt.Errorf("missing GitHub username")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -90,17 +89,14 @@ func analyzeUser(username string) (signals.Report, error) {
 
 	repoDTOs, err := acquisition.NewClient().FetchRepos(ctx, username)
 	if err != nil {
-		return signals.Report{}, err
+		return projection.AnalyzeProjection{}, err
 	}
 
 	repos := acquisition.NormalizeRepos(repoDTOs)
-
-	signalValues := signals.ExtractSignals(repos)
-	scores := signals.ScoreSignals(signalValues)
-	if len(repos) < minReposForFullScore {
-		scores.Overall = int(math.Round(float64(scores.Overall) * smallSampleOverallMultiplier))
+	proj, err := projection.BuildAnalyzeProjection(username, repos)
+	if err != nil {
+		return projection.AnalyzeProjection{}, err
 	}
 
-	report := signals.BuildReport(username, scores, repos)
-	return report, nil
+	return proj, nil
 }

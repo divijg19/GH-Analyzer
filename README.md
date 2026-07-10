@@ -1,25 +1,30 @@
 # GitHub Signal Analyzer
 
-GH-Analyzer is a minimal Go CLI that analyzes a GitHub user's public repositories and returns a deterministic JSON report.
+GH-Analyzer analyzes GitHub users' public repositories and returns deterministic signal-based profiles, enabling search, comparison, and evaluation.
 
 ## Project Scope
 
-- CLI: deterministic analysis, scoring, search/query workflows, and JSON/report output.
-- Frontend UI: lightweight visualization and exploration of analyzer results without changing scoring logic.
+- **CLI**: analysis, search, query, inspect, dataset management
+- **Server**: HTTP API for search and analysis
+- **Frontend**: lightweight visualization (see `web/`)
+- **Pure pipeline**: Acquisition → Normalization → Facts → Signals → Profile → Evaluation → Projection → Presentation
 
-## Usage
+## Commands
 
-- gh-analyzer <username>
-- gha <username>
-
-If username is missing, the CLI exits with an error message.
+- `gh-analyzer <username>` — Analyze a single GitHub profile
+- `gh-analyzer search <query>` — Discover developers by intent or expression
+- `gh-analyzer query [options]` — Advanced signal-threshold query
+- `gh-analyzer inspect <username>` — Inspect a profile in a dataset
+- `gh-analyzer build <usernames>` — Build a dataset from usernames
+- `gh-analyzer dataset [info|preview|stats]` — Show dataset summary
+- `gh-analyzer serve` — Start the HTTP API server
 
 ## Signal Definitions
 
-- Consistency: recent non-fork repositories divided by max(10, total non-fork repositories); measures recent activity across original work.
-- Depth: deep non-fork repositories (size >= 50) divided by max(5, total non-fork repositories); measures substantial original projects.
-- Ownership: non-fork repositories with size > 0 divided by all repositories with size > 0; ignores trivial size-0 repositories.
-- Activity: based on the latest update across all repositories with graded decay:
+- **Consistency**: recent non-fork repositories divided by max(10, total non-fork repositories); measures recent activity across original work.
+- **Depth**: deep non-fork repositories (size >= 50 KB) divided by max(5, total non-fork repositories); measures substantial original projects.
+- **Ownership**: non-fork repositories with size > 0 divided by all repositories with size > 0; ignores trivial size-0 repositories.
+- **Activity**: based on the latest update across all repositories with graded decay:
   - <= 30 days: 1.0
   - <= 90 days: 0.7
   - <= 180 days: 0.4
@@ -27,7 +32,7 @@ If username is missing, the CLI exits with an error message.
 
 ## Scoring
 
-Signals are clamped to [0,1] and converted to 0-100. Overall score uses:
+Signals are clamped to [0,1] and converted to 0-100 integer component scores. Overall score uses:
 
 - Consistency: 40%
 - Ownership: 30%
@@ -35,44 +40,45 @@ Signals are clamped to [0,1] and converted to 0-100. Overall score uses:
 
 For very small datasets (fewer than 3 repos), overall score is multiplied by 0.7.
 
-## Scoring Interpretation
+Scores are percentile-based within a dataset.
 
-Scores are percentile-based within the dataset.
+## Architecture
 
-A score of 0.90 means:
-	the candidate ranks higher than 90% of the dataset.
+```
+GitHub
+   ↓
+Transport          internal/github
+   ↓
+Acquisition        internal/acquisition
+   ↓
+Normalization      internal/acquisition/normalize.go
+   ↓
+Facts              signals.Facts
+   ↓
+Signals            signals.Signals → RawScore
+   ↓
+Profile            index.Profile
+   ↓
+Evaluation         internal/evaluation
+   ↓
+Engine             internal/engine
+   ↓
+Projection         internal/projection
+   ↓
+Presentation       cmd/gh-analyzer · cmd/server · web
+```
 
-## Live Mode
+Each layer has strict ownership. See `docs/ARCHITECTURE.md` for details.
 
-Use --live to fetch candidates directly from GitHub.
+## Search Modes
 
-Example:
-	gh-analyzer search backend --live
+Use `--live` to fetch candidates directly from GitHub:
 
-Notes:
-- limited sample size (max ~20 users)
-- subject to GitHub API rate limits
-- results are not persisted unless explicitly saved
+```
+gh-analyzer search backend --live
+```
 
-## Example Output (JSON)
-
-~~~json
-{
-	"username": "octocat",
-	"scores": {
-		"Ownership": 75,
-		"Consistency": 100,
-		"Depth": 100,
-		"Overall": 93
-	},
-	"summary": "Strong consistency, strong ownership, strong depth",
-	"highlights": [
-		"Active in last 90 days",
-		"Majority original repositories",
-		"Includes non-trivial projects"
-	]
-}
-~~~
+Limited to ~20 users, subject to GitHub API rate limits.
 
 ## Limitations
 

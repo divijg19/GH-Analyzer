@@ -45,12 +45,10 @@ func Build(ctx context.Context, usernames []string) (Index, error) {
 		contribSummary := acquisition.NormalizeContributions(contribDTO)
 
 		signalValues := signals.ExtractSignalsFromFacts(facts)
-		scores := signals.ScoreSignals(signalValues)
-		report := signals.BuildReport(username, scores, repos)
 
 		idx.Add(Profile{
 			Username:      username,
-			Signals:       signals.SignalsFromReport(report),
+			Signals:       signals.SignalsToMap(signalValues),
 			Facts:         &facts,
 			Metadata:      meta,
 			Contributions: contribSummary,
