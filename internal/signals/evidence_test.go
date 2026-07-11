@@ -7,7 +7,7 @@ import (
 
 func TestGenerateEvidenceDeterministic(t *testing.T) {
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
-	facts := Facts{
+	facts := RepositoryFacts{
 		TotalRepos:         42,
 		OriginalRepos:      38,
 		ForkRepos:          4,
@@ -54,7 +54,7 @@ func TestGenerateEvidenceDeterministic(t *testing.T) {
 }
 
 func TestGenerateEvidenceStructure(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		OriginalRepos:      10,
 		RecentRepos:        8,
 		DeepRepos:          5,
@@ -85,7 +85,7 @@ func TestGenerateEvidenceStructure(t *testing.T) {
 }
 
 func TestGenerateEvidenceOwnershipGroup(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		ValidRepos:         39,
 		ValidOriginalRepos: 35,
 	}
@@ -123,7 +123,7 @@ func TestGenerateEvidenceOwnershipGroup(t *testing.T) {
 }
 
 func TestGenerateEvidenceConsistencyGroup(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		OriginalRepos: 38,
 		RecentRepos:   35,
 	}
@@ -158,7 +158,7 @@ func TestGenerateEvidenceConsistencyGroup(t *testing.T) {
 }
 
 func TestGenerateEvidenceDepthGroup(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		OriginalRepos:   38,
 		DeepRepos:       12,
 		LargestRepoSize: 2048,
@@ -208,7 +208,7 @@ func TestGenerateEvidenceDepthGroup(t *testing.T) {
 
 func TestGenerateEvidenceActivityGroup(t *testing.T) {
 	activityDate := time.Date(2026, 5, 15, 0, 0, 0, 0, time.UTC)
-	facts := Facts{
+	facts := RepositoryFacts{
 		LatestActivity: activityDate,
 	}
 	signals := Signals{Activity: 1.00}
@@ -242,7 +242,7 @@ func TestGenerateEvidenceActivityGroup(t *testing.T) {
 }
 
 func TestGenerateEvidenceEmptyFacts(t *testing.T) {
-	facts := Facts{}
+	facts := RepositoryFacts{}
 	signals := Signals{}
 
 	groups := GenerateEvidence(facts, signals)
@@ -276,7 +276,7 @@ func TestGenerateEvidenceEmptyFacts(t *testing.T) {
 }
 
 func TestGenerateEvidenceZeroTimeActivity(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		OriginalRepos: 5,
 		RecentRepos:   3,
 		DeepRepos:     2,
@@ -296,7 +296,7 @@ func TestGenerateEvidenceZeroTimeActivity(t *testing.T) {
 }
 
 func TestGenerateEvidenceZeroOriginalRepos(t *testing.T) {
-	facts := Facts{
+	facts := RepositoryFacts{
 		OriginalRepos:      0,
 		RecentRepos:        0,
 		DeepRepos:          0,

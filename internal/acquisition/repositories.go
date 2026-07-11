@@ -76,7 +76,7 @@ func (c *Client) FetchRepos(ctx context.Context, username string) ([]RepoDTO, er
 
 // FetchReposNormalized retrieves a user's public repositories and returns them
 // as domain models. It is equivalent to FetchRepos followed by NormalizeRepos.
-func (c *Client) FetchReposNormalized(ctx context.Context, username string) ([]signals.Repo, error) {
+func (c *Client) FetchReposNormalized(ctx context.Context, username string) ([]signals.RepositoryVestige, error) {
 	dtos, err := c.FetchRepos(ctx, username)
 	if err != nil {
 		return nil, err

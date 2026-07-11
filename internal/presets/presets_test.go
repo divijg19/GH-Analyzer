@@ -1,18 +1,22 @@
 package presets
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/divijg19/Atlas/internal/engine"
+)
 
 func TestPreset(t *testing.T) {
 	tests := []struct {
 		name       string
 		presetName string
-		want       []Condition
+		want       []engine.Condition
 		wantErr    bool
 	}{
 		{
 			name:       "strong",
 			presetName: "strong",
-			want: []Condition{
+			want: []engine.Condition{
 				{Signal: "consistency", Operator: ">=", Value: 0.7},
 				{Signal: "ownership", Operator: ">=", Value: 0.6},
 			},
@@ -20,14 +24,14 @@ func TestPreset(t *testing.T) {
 		{
 			name:       "consistent",
 			presetName: "consistent",
-			want: []Condition{
+			want: []engine.Condition{
 				{Signal: "consistency", Operator: ">=", Value: 0.8},
 			},
 		},
 		{
 			name:       "deep",
 			presetName: "deep",
-			want: []Condition{
+			want: []engine.Condition{
 				{Signal: "depth", Operator: ">=", Value: 0.7},
 			},
 		},

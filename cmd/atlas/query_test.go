@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/divijg19/Atlas/internal/presets"
 )
 
 func TestParseConditionInvalidSignal(t *testing.T) {
@@ -26,13 +28,13 @@ func TestParseExpressionMalformed(t *testing.T) {
 	}
 }
 
-func TestConditionsFromPreset(t *testing.T) {
-	conditions, err := conditionsFromPreset("strong")
+func TestPresetConditions(t *testing.T) {
+	query, err := presets.Preset("strong")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(conditions) != 2 {
-		t.Fatalf("expected 2 conditions, got %d", len(conditions))
+	if len(query.Conditions) != 2 {
+		t.Fatalf("expected 2 conditions, got %d", len(query.Conditions))
 	}
 }
 

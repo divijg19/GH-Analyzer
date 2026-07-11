@@ -12,7 +12,7 @@ type TopRepository struct {
 }
 
 // ExtractTopRepositories returns the top N non-fork repositories sorted by size descending
-func ExtractTopRepositories(repos []signals.Repo, limit int) []TopRepository {
+func ExtractTopRepositories(repos []signals.RepositoryVestige, limit int) []TopRepository {
 	reposBySize := make([]TopRepository, 0, len(repos))
 
 	for _, repo := range repos {

@@ -2,7 +2,13 @@ package signals
 
 import "time"
 
-type Facts struct {
+// Facts of the Repository intelligence domain. Currently the only implemented
+// fact family; future releases introduce ContributionFacts, TechnologyFacts,
+// BehaviourFacts, and CollaborationFacts as documented placeholders.
+//
+// Facts are deterministic aggregates derived entirely from Vestiges. They never
+// observe, fetch, or evaluate — they only count, sum, and classify.
+type RepositoryFacts struct {
 	TotalRepos         int       `json:"total_repos"`
 	OriginalRepos      int       `json:"original_repos"`
 	ForkRepos          int       `json:"fork_repos"`
@@ -29,13 +35,32 @@ type Facts struct {
 	NewestCreated   time.Time `json:"newest_created"`
 }
 
-func FromRepos(repos []Repo) Facts {
+// ContributionFacts is a documented placeholder for the Contribution
+// intelligence domain. Facts derived from contribution vestiges (pull
+// requests, issues, reviews) will be added in a future release.
+type ContributionFacts struct{}
+
+// TechnologyFacts is a documented placeholder for the Technology intelligence
+// domain. Facts derived from language, framework, and toolchain vestiges will
+// be added in a future release.
+type TechnologyFacts struct{}
+
+// BehaviourFacts is a documented placeholder for the Behaviour intelligence
+// domain. Facts derived from commit cadence, review patterns, and ownership
+// evolution will be added in a future release.
+type BehaviourFacts struct{}
+
+// CollaborationFacts is a documented placeholder for the Collaboration
+// intelligence domain. Facts derived from review metrics, team interactions,
+// and contribution distribution will be added in a future release.
+type CollaborationFacts struct{}
+
+func FromRepos(repos []RepositoryVestige, referenceTime time.Time) RepositoryFacts {
 	if len(repos) == 0 {
-		return Facts{}
+		return RepositoryFacts{}
 	}
 
-	now := time.Now()
-	cutoff := now.AddDate(0, 0, -recentWindowDays)
+	cutoff := referenceTime.AddDate(0, 0, -recentWindowDays)
 
 	totalRepos := len(repos)
 	var originalRepos int
@@ -119,7 +144,7 @@ func FromRepos(repos []Repo) Facts {
 		}
 	}
 
-	return Facts{
+	return RepositoryFacts{
 		TotalRepos:         totalRepos,
 		OriginalRepos:      originalRepos,
 		ForkRepos:          forkRepos,

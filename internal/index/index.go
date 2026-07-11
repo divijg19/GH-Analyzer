@@ -7,11 +7,11 @@ import (
 )
 
 type Profile struct {
-	Username      string                 `json:"username"`
-	Signals       map[string]float64     `json:"signals"`
-	Facts         *signals.Facts         `json:"facts,omitempty"`
-	Metadata      *profile.UserMetadata  `json:"metadata,omitempty"`
-	Contributions *contributions.Summary `json:"contributions,omitempty"`
+	Username      string                   `json:"username"`
+	Signals       map[string]float64       `json:"signals"`
+	Facts         *signals.RepositoryFacts `json:"facts,omitempty"`
+	Metadata      *profile.UserMetadata    `json:"metadata,omitempty"`
+	Contributions *contributions.Summary   `json:"contributions,omitempty"`
 }
 
 type Index struct {

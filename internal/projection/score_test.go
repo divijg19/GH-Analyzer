@@ -8,7 +8,7 @@ import (
 )
 
 func TestExtractTopRepositories(t *testing.T) {
-	repos := []signals.Repo{
+	repos := []signals.RepositoryVestige{
 		{Name: "a", Size: 10, Fork: false},
 		{Name: "b", Size: 50, Fork: false},
 		{Name: "c", Size: 30, Fork: false},
@@ -34,7 +34,7 @@ func TestExtractTopRepositories(t *testing.T) {
 }
 
 func TestExtractTopRepositoriesLimitExceedsCount(t *testing.T) {
-	repos := []signals.Repo{
+	repos := []signals.RepositoryVestige{
 		{Name: "a", Size: 10, Fork: false},
 		{Name: "b", Size: 50, Fork: false},
 	}
@@ -52,7 +52,7 @@ func TestExtractTopRepositoriesEmpty(t *testing.T) {
 
 func TestBuildAnalyzeProjection(t *testing.T) {
 	now := time.Now()
-	repos := []signals.Repo{
+	repos := []signals.RepositoryVestige{
 		{Name: "big", Size: 100, Fork: false, UpdatedAt: now},
 		{Name: "small", Size: 20, Fork: false, UpdatedAt: now},
 		{Name: "fork", Size: 200, Fork: true, UpdatedAt: now},

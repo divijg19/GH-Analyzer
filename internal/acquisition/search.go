@@ -10,10 +10,8 @@ import (
 )
 
 const (
-	// MaxRepoResults is the number of repositories requested per search page.
-	MaxRepoResults = 30
-	// MaxUsers caps the number of distinct owners returned from a search.
-	MaxUsers = 20
+	maxRepoResults = 30
+	maxUsers       = 20
 )
 
 // RepoSearchDTO mirrors the GitHub repository search API response.
@@ -33,7 +31,7 @@ func (c *Client) SearchRepositoryOwners(ctx context.Context, query string) ([]st
 		return nil, nil
 	}
 
-	endpoint := fmt.Sprintf("%s/search/repositories?q=%s&per_page=%d", c.baseURL, url.QueryEscape(trimmed), MaxRepoResults)
+	endpoint := fmt.Sprintf("%s/search/repositories?q=%s&per_page=%d", c.baseURL, url.QueryEscape(trimmed), maxRepoResults)
 	resp, err := c.get(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub data")
@@ -50,7 +48,7 @@ func (c *Client) SearchRepositoryOwners(ctx context.Context, query string) ([]st
 	}
 
 	seen := make(map[string]struct{}, len(payload.Items))
-	usernames := make([]string, 0, MaxUsers)
+	usernames := make([]string, 0, maxUsers)
 
 	for _, item := range payload.Items {
 		login := strings.TrimSpace(item.Owner.Login)
@@ -62,7 +60,7 @@ func (c *Client) SearchRepositoryOwners(ctx context.Context, query string) ([]st
 		}
 		seen[login] = struct{}{}
 		usernames = append(usernames, login)
-		if len(usernames) >= MaxUsers {
+		if len(usernames) >= maxUsers {
 			break
 		}
 	}

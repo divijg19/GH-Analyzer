@@ -9,13 +9,13 @@ import (
 )
 
 // normalizeRepo maps a GitHub repository DTO to the domain repository model.
-func normalizeRepo(dto RepoDTO) signals.Repo {
+func normalizeRepo(dto RepoDTO) signals.RepositoryVestige {
 	license := ""
 	if dto.License != nil {
 		license = dto.License.Key
 	}
 
-	return signals.Repo{
+	return signals.RepositoryVestige{
 		Name:          dto.Name,
 		Fork:          dto.Fork,
 		Size:          dto.Size,
@@ -36,8 +36,8 @@ func normalizeRepo(dto RepoDTO) signals.Repo {
 }
 
 // NormalizeRepos maps a slice of repository DTOs to domain repositories.
-func NormalizeRepos(dtos []RepoDTO) []signals.Repo {
-	repos := make([]signals.Repo, len(dtos))
+func NormalizeRepos(dtos []RepoDTO) []signals.RepositoryVestige {
+	repos := make([]signals.RepositoryVestige, len(dtos))
 	for i, dto := range dtos {
 		repos[i] = normalizeRepo(dto)
 	}

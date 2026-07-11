@@ -10,12 +10,12 @@ import (
 // InspectProjection provides a raw data view for inspection and debugging.
 // Contains everything from Profile plus generated evidence.
 type InspectProjection struct {
-	Username      string                  `json:"username"`
-	Metadata      *profile.UserMetadata   `json:"metadata,omitempty"`
-	Facts         *signals.Facts          `json:"facts,omitempty"`
-	Signals       map[string]float64      `json:"signals"`
-	Contributions *contributions.Summary  `json:"contributions,omitempty"`
-	Evidence      []signals.EvidenceGroup `json:"evidence"`
+	Username      string                   `json:"username"`
+	Metadata      *profile.UserMetadata    `json:"metadata,omitempty"`
+	Facts         *signals.RepositoryFacts `json:"facts,omitempty"`
+	Signals       map[string]float64       `json:"signals"`
+	Contributions *contributions.Summary   `json:"contributions,omitempty"`
+	Evidence      []signals.EvidenceGroup  `json:"evidence"`
 }
 
 // BuildInspectProjection creates a raw data view from a Profile.

@@ -19,7 +19,7 @@ func TestBuildInspectProjection_DeterministicOutput(t *testing.T) {
 			Company:  "Acme",
 			Location: "NYC",
 		},
-		Facts: &signals.Facts{
+		Facts: &signals.RepositoryFacts{
 			TotalRepos:         100,
 			OriginalRepos:      80,
 			ForkRepos:          20,
@@ -68,7 +68,7 @@ func TestBuildInspectProjection_EvidenceGeneration(t *testing.T) {
 	now := time.Now().UTC()
 	p := index.Profile{
 		Username: "testuser",
-		Facts: &signals.Facts{
+		Facts: &signals.RepositoryFacts{
 			TotalRepos:         100,
 			OriginalRepos:      80,
 			RecentRepos:        50,
@@ -174,7 +174,7 @@ func TestBuildInspectProjection_MetadataMapping(t *testing.T) {
 }
 
 func TestBuildInspectProjection_FactsMapping(t *testing.T) {
-	facts := &signals.Facts{
+	facts := &signals.RepositoryFacts{
 		TotalRepos:    100,
 		OriginalRepos: 80,
 		ForkRepos:     20,
@@ -274,7 +274,7 @@ func TestBuildInspectProjection_FullIntegration(t *testing.T) {
 			Location:  "New York",
 			CreatedAt: now,
 		},
-		Facts: &signals.Facts{
+		Facts: &signals.RepositoryFacts{
 			TotalRepos:         50,
 			OriginalRepos:      40,
 			RecentRepos:        30,

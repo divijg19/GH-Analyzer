@@ -16,11 +16,11 @@ Acquisition        internal/acquisition
    ↓
 Normalization      internal/acquisition/normalize.go
    ↓
-Vestiges           signals.Repo · profile.UserMetadata · contributions.Summary
+Vestiges           signals.RepositoryVestige · profile.UserMetadata · contributions.Summary
    ↓
-Facts              signals.Facts
-   ↓
-Indicators         signals.Signals → RawScore
+Facts              signals.RepositoryFacts
+    ↓
+Signals            signals.Signals → RawScore
    ↓
 Profile            index.Profile (aggregates facts, signals, metadata, contributions)
    ↓
@@ -33,7 +33,7 @@ Projection         internal/projection (presentation shapes)
 Consumers          cmd/atlas · cmd/server · web
 ```
 
-The conceptual model behind these layers — Vestiges, Facts, Indicators,
+The conceptual model behind these layers — Vestiges, Facts, Signals,
 Profile, Evaluation, Intelligence, Projections, Consumers — is defined in
 [`INTELLIGENCE.md`](./INTELLIGENCE.md).
 
@@ -85,7 +85,7 @@ DTOs and are parsed only during normalization.
 **Owns**
 
 - Mapping GitHub DTOs to domain models:
-  - `RepoDTO` → `signals.Repo`
+  - `RepoDTO` → `signals.RepositoryVestige`
   - `UserDTO` → `profile.UserMetadata`
   - `ContributionsDTO` → `contributions.Summary`
 - Timestamp parsing (`created_at` / `updated_at` → `time.Time`, zero-fallback)
@@ -99,12 +99,12 @@ Normalization is co-located in `internal/acquisition` (not a separate
 package). It is the single boundary between GitHub's representation and the
 domain's.
 
-### Vestiges — `signals.Repo`, `profile.UserMetadata`, `contributions.Summary`
+### Vestiges — `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`
 
 **Owns**
 
 - The raw, normalized observations recorded from GitHub
-- Repository observations (`signals.Repo`), account metadata
+- Repository observations (`signals.RepositoryVestige`), account metadata
   (`profile.UserMetadata`), and contribution totals (`contributions.Summary`)
 
 **Never owns**
@@ -113,16 +113,16 @@ domain's.
 
 Vestiges are the lowest layer of the intelligence model: observations Atlas
 records but does not compute. They are the input to Facts. Phase 9 enriched
-`signals.Repo` with repository metadata (visibility, archived, template,
+`signals.RepositoryVestige` with repository metadata (visibility, archived, template,
 license, topics, stars, forks, watchers, open issues, created/pushed dates,
 default branch) without changing its role as a raw observation.
 
-### Facts — `signals.Facts`
+### Facts — `signals.RepositoryFacts`
 
 **Owns**
 
 - Aggregated repository statistics (counts, sizes, timestamps)
-- Deterministic derivation from `[]signals.Repo`
+- Deterministic derivation from `[]signals.RepositoryVestige`
 
 **Never owns**
 
@@ -290,7 +290,7 @@ is written.
 made the domain packages pure, and established the normalization boundary.
 
 **v0.8.12** completed the presentation architecture:
-- Removed `Report` (deleted `signals.Report`, `signals.Scores`, `signals.BuildReport`)
+- Removed `Report` (deleted `signals.RepositoryVestigert`, `signals.Scores`, `signals.BuildReport`)
 - Established projection layer with `CandidateProjection`, `AnalyzeProjection`, `InspectProjection`, `SearchProjection`
 - All CLI/server presentation paths now consume projections
 - Introduced `internal/evaluation` as the single owner of score interpretation
@@ -308,7 +308,7 @@ made the domain packages pure, and established the normalization boundary.
   `internal/engine/ranking.go` now defines only the `RankingStrategy` interface
   (Phase 6).
 - Enriched repository observations and facts with metadata — `RepoDTO`,
-  `signals.Repo`, `NormalizeRepos`, `signals.Facts` — without introducing new
+  `signals.RepositoryVestige`, `NormalizeRepos`, `signals.RepositoryFacts` — without introducing new
   indicators (Phase 9, Repository Intelligence Foundation).
 - Documented the canonical intelligence model in
   [`INTELLIGENCE.md`](./INTELLIGENCE.md): Vestiges, Facts, Indicators, Profile,

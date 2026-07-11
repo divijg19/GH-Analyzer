@@ -1,10 +1,18 @@
-// Package signals defines the domain observations, facts, and indicators that
-// quantify a GitHub user's repository portfolio.
+// Package signals owns the Vestiges, Facts, and Signals layers of the Atlas
+// Intelligence Ontology (see docs/INTELLIGENCE.md). It owns:
 //
-// It owns the normalized repository observation (Repo / Vestige), the
-// deterministic Facts aggregates (FromRepos), and the measured Indicators
-// (Signals, RawScore). It owns no overall scoring, confidence, or ranking —
-// those belong to internal/evaluation. See docs/INTELLIGENCE.md.
+//   - RepositoryVestige — the canonical observation of a repository
+//   - RepositoryFacts — deterministic aggregates derived from vestiges
+//   - Signals — normalized measurements (Ownership, Consistency, Depth, Activity)
+//   - RawScore — unscored evaluation inputs
+//
+// These three layers are co-located because they share the same change
+// drivers: new acquisition backends produce new vestige fields, which flow
+// into new fact aggregations, which may drive new signals. Splitting them
+// would add package boundaries without improving isolation.
+//
+// This package owns no overall scoring, confidence, or ranking — those
+// belong to internal/evaluation.
 package signals
 
 import (
@@ -32,23 +40,38 @@ const (
 	maxSignalValue = 1.0
 )
 
-type Repo struct {
-	Name          string    `json:"name"`
-	Fork          bool      `json:"fork"`
-	Size          int       `json:"size"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Visibility    string    `json:"visibility"`
-	Archived      bool      `json:"archived"`
-	Template      bool      `json:"template"`
-	License       string    `json:"license"`
-	Topics        []string  `json:"topics"`
-	Stars         int       `json:"stargazers_count"`
-	Forks         int       `json:"forks_count"`
-	Watchers      int       `json:"watchers_count"`
-	OpenIssues    int       `json:"open_issues_count"`
-	CreatedAt     time.Time `json:"created_at"`
-	PushedAt      time.Time `json:"pushed_at"`
-	DefaultBranch string    `json:"default_branch"`
+// RepositoryVestige is the canonical observation of a repository. Every
+// acquisition backend (REST, GraphQL, GitFut, local git) produces vestiges;
+// Atlas never acquires from them directly. Fields are grouped into observation
+// domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure.
+type RepositoryVestige struct {
+	// Identity
+	Name       string `json:"name"`
+	Visibility string `json:"visibility"`
+	Archived   bool   `json:"archived"`
+	Template   bool   `json:"template"`
+
+	// Ownership
+	Fork bool `json:"fork"`
+
+	// Timeline
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	PushedAt  time.Time `json:"pushed_at"`
+
+	// Technology
+	License       string   `json:"license"`
+	Topics        []string `json:"topics"`
+	DefaultBranch string   `json:"default_branch"`
+
+	// Maintenance
+	OpenIssues int `json:"open_issues_count"`
+	Stars      int `json:"stargazers_count"`
+	Forks      int `json:"forks_count"`
+	Watchers   int `json:"watchers_count"`
+
+	// Structure
+	Size int `json:"size"`
 }
 
 type Signals struct {
@@ -64,11 +87,11 @@ type RawScore struct {
 	Depth       int `json:"depth"`
 }
 
-func ExtractSignals(repos []Repo) Signals {
-	return ExtractSignalsFromFacts(FromRepos(repos))
+func ExtractSignals(repos []RepositoryVestige, referenceTime time.Time) Signals {
+	return ExtractSignalsFromFacts(FromRepos(repos, referenceTime), referenceTime)
 }
 
-func ExtractSignalsFromFacts(f Facts) Signals {
+func ExtractSignalsFromFacts(f RepositoryFacts, referenceTime time.Time) Signals {
 	consistency := 0.0
 	depth := 0.0
 	ownership := 0.0
@@ -84,7 +107,7 @@ func ExtractSignalsFromFacts(f Facts) Signals {
 		ownership = float64(f.ValidOriginalRepos) / float64(f.ValidRepos)
 	}
 
-	activity := activityFromTime(f.LatestActivity, time.Now())
+	activity := activityFromTime(f.LatestActivity, referenceTime)
 
 	return Signals{
 		Ownership:   clamp01(ownership),
