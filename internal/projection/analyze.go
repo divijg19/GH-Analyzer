@@ -7,6 +7,8 @@
 package projection
 
 import (
+	"time"
+
 	"github.com/divijg19/Atlas/internal/evaluation"
 	"github.com/divijg19/Atlas/internal/signals"
 )
@@ -25,8 +27,8 @@ type AnalyzeProjection struct {
 }
 
 // BuildAnalyzeProjection creates analysis-ready data from repos.
-func BuildAnalyzeProjection(username string, repos []signals.Repo) (AnalyzeProjection, error) {
-	signalValues := signals.ExtractSignals(repos)
+func BuildAnalyzeProjection(username string, repos []signals.RepositoryVestige) (AnalyzeProjection, error) {
+	signalValues := signals.ExtractSignals(repos, time.Now())
 	scores := signals.ScoreSignals(signalValues)
 
 	// Compute overall from raw scores via the evaluation layer (single owner

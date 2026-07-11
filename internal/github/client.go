@@ -1,3 +1,6 @@
+// Package github implements the Transport layer of the Atlas Intelligence
+// Ontology (see docs/INTELLIGENCE.md). It owns HTTP communication with the
+// GitHub REST API. It never parses domain types or interprets responses.
 package github
 
 import (

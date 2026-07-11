@@ -6,6 +6,7 @@ import (
 
 	"github.com/divijg19/Atlas/internal/engine"
 	"github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/presets"
 )
 
 type Options struct {
@@ -40,7 +41,7 @@ func queryFromOptions(input string, options Options) (engine.Query, error) {
 	var err error
 
 	if preset != "" {
-		query, err = queryFromPreset(preset)
+		query, err = presets.Preset(preset)
 	} else {
 		query, err = MapIntent(input)
 	}

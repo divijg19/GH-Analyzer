@@ -16,7 +16,7 @@ type EvidenceGroup struct {
 	Items  []Evidence
 }
 
-func GenerateEvidence(facts Facts, signals Signals) []EvidenceGroup {
+func GenerateEvidence(facts RepositoryFacts, signals Signals) []EvidenceGroup {
 	groups := make([]EvidenceGroup, 0, 4)
 
 	groups = append(groups, EvidenceGroup{

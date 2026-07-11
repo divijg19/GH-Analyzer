@@ -1,14 +1,16 @@
-// Package index assembles and stores the canonical candidate aggregate
-// (Profile), combining facts, signals, metadata, and contributions.
+// Package index owns the Profile layer of the Atlas Intelligence Ontology
+// (see docs/INTELLIGENCE.md). It assembles and stores the canonical candidate
+// aggregate, combining facts, signals, metadata, and contributions.
 //
 // The Profile is the single source of truth for what Atlas knows about a
-// candidate; it stores observations, not evaluations. See docs/INTELLIGENCE.md.
+// candidate; it stores observations, not evaluations.
 package index
 
 import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/divijg19/Atlas/internal/acquisition"
 	"github.com/divijg19/Atlas/internal/signals"
@@ -17,7 +19,7 @@ import (
 // ProfileFetcher is the acquisition surface required to assemble a Profile.
 // It is satisfied by *acquisition.Client and by test fakes.
 type ProfileFetcher interface {
-	FetchReposNormalized(ctx context.Context, username string) ([]signals.Repo, error)
+	FetchReposNormalized(ctx context.Context, username string) ([]signals.RepositoryVestige, error)
 	FetchUser(ctx context.Context, username string) (*acquisition.UserDTO, error)
 	FetchContributions(ctx context.Context, username string) (*acquisition.ContributionsDTO, error)
 }
@@ -36,7 +38,7 @@ func BuildProfile(ctx context.Context, fetcher ProfileFetcher, username string) 
 		return Profile{}, fmt.Errorf("fetch repos for %q: %w", username, err)
 	}
 
-	facts := signals.FromRepos(repos)
+	facts := signals.FromRepos(repos, time.Now())
 
 	userDTO, err := fetcher.FetchUser(ctx, username)
 	if err != nil {
@@ -52,7 +54,7 @@ func BuildProfile(ctx context.Context, fetcher ProfileFetcher, username string) 
 
 	contribSummary := acquisition.NormalizeContributions(contribDTO)
 
-	signalValues := signals.ExtractSignalsFromFacts(facts)
+	signalValues := signals.ExtractSignalsFromFacts(facts, time.Now())
 
 	return Profile{
 		Username:      username,

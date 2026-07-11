@@ -1,8 +1,10 @@
-// Package acquisition owns all interaction with the GitHub REST API.
+// Package acquisition owns the Acquisition and Normalization layers of the
+// Atlas Intelligence Ontology (see docs/INTELLIGENCE.md).
 //
-// It is the sole owner of GitHub endpoints, GitHub DTOs, GitHub endpoint
-// semantics, and GitHub API errors. It builds on the transport layer
-// (internal/github) for HTTP execution, authentication, and headers.
+// Acquisition fetches external data and produces DTOs that mirror the API
+// schema. Normalization maps those DTOs to domain vestiges (RepositoryVestige,
+// UserMetadata, Contributions.Summary). This package never interprets,
+// evaluates, or derives intelligence beyond the vestige boundary.
 //
 // Architectural rules:
 //   - Acquisition owns GitHub's schema, not the domain's. DTOs mirror GitHub

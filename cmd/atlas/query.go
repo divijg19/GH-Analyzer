@@ -47,11 +47,11 @@ func runQuery(args []string) error {
 	conditions := make([]engine.Condition, 0, 8)
 
 	if activePreset != "" {
-		presetConditions, err := conditionsFromPreset(activePreset)
+		presetQuery, err := presets.Preset(activePreset)
 		if err != nil {
 			return fmt.Errorf("invalid preset: %w", err)
 		}
-		conditions = append(conditions, presetConditions...)
+		conditions = append(conditions, presetQuery.Conditions...)
 	}
 
 	if *consistency >= 0 {
@@ -87,11 +87,11 @@ func runQuery(args []string) error {
 
 	if len(conditions) == 0 {
 		activePreset = defaultQueryPreset
-		presetConditions, err := conditionsFromPreset(activePreset)
+		presetQuery, err := presets.Preset(activePreset)
 		if err != nil {
 			return err
 		}
-		conditions = append(conditions, presetConditions...)
+		conditions = append(conditions, presetQuery.Conditions...)
 	}
 
 	resolvedLimit, err := resolveLimitFlag(fs, *limit, *kLimit)
@@ -134,24 +134,6 @@ func runQuery(args []string) error {
 	}
 
 	return nil
-}
-
-func conditionsFromPreset(name string) ([]engine.Condition, error) {
-	presetQuery, err := presets.Preset(name)
-	if err != nil {
-		return nil, err
-	}
-
-	conditions := make([]engine.Condition, 0, len(presetQuery.Conditions))
-	for _, condition := range presetQuery.Conditions {
-		conditions = append(conditions, engine.Condition{
-			Signal:   condition.Signal,
-			Operator: condition.Operator,
-			Value:    condition.Value,
-		})
-	}
-
-	return conditions, nil
 }
 
 func parseExpression(expression string) ([]engine.Condition, error) {

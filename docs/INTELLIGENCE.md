@@ -1,10 +1,12 @@
-# Atlas Intelligence Model
+# Atlas Intelligence Ontology
 
-This document defines the **canonical intelligence model** for Atlas. It is the
-conceptual companion to [`ARCHITECTURE.md`](./ARCHITECTURE.md), which defines
-layer ownership. Where `ARCHITECTURE.md` answers *"which package owns this?"*,
-this document answers *"what is the shape of intelligence as data flows through
-Atlas?"*
+This document is the canonical reference for the Atlas Intelligence Ontology.
+It defines every concept Atlas understands, following one guiding principle:
+
+> **Atlas observes Vestiges. Atlas derives Facts. Atlas measures Indicators. Atlas performs Evaluation. Atlas projects Intelligence.**
+
+Where `ARCHITECTURE.md` answers *"which package owns this?"*, this document
+answers *"what is the concept?"* and *"what are its invariants?"*
 
 The model is a strictly downward pipeline. Each stage transforms the previous
 stage's output into a richer, still-deterministic representation. Nothing is
@@ -13,110 +15,269 @@ the same intelligence.
 
 ---
 
-## The Eight Stages
+## Canonical Vocabulary
+
+Every concept has exactly one name, one owner, and one responsibility. No
+synonyms, no overlaps, no ambiguous ownership.
 
 ```
-Vestiges      raw normalized observations        (signals.Repo, profile.UserMetadata, contributions.Summary)
-   ↓
-Facts         deterministic aggregates            (signals.Facts)
-   ↓
-Indicators    measured component signals          (signals.Signals → signals.RawScore)
-   ↓
-Profile       canonical candidate aggregate       (index.Profile)
-   ↓
-Evaluation    score calibration & confidence      (internal/evaluation)
-   ↓
-Intelligence  the evaluated candidate             (Profile + Evaluation output)
-   ↓
-Projections   consumer-shaped read models         (internal/projection)
-   ↓
-Consumers     CLI, HTTP API, web UI               (cmd/atlas, cmd/server, web)
+Transport
+    ↓
+Acquisition
+    ↓
+Normalization
+    ↓
+Vestiges
+    ↓
+Facts
+    ↓
+Signals
+    ↓
+Profile
+    ↓
+Evaluation
+    ↓
+Engine
+    ↓
+Projection
+    ↓
+Consumers
 ```
 
-### 1. Vestiges
+---
 
-The raw, normalized observations pulled from GitHub and mapped into the
-domain. These are facts about the world that Atlas does not compute — it only
-records them.
+## Layer Definitions
 
-- `signals.Repo` — a normalized repository observation (name, fork, size,
-  timestamps, visibility, archived, template, license, topics, stars, forks,
-  watchers, open issues, created/pushed dates, default branch).
-- `profile.UserMetadata` — normalized account metadata.
-- `contributions.Summary` — normalized contribution totals.
+### Transport — `internal/github`
 
-Vestiges are owned by **Acquisition** and **Normalization**
-(`internal/acquisition`).
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Owns HTTP communication with external APIs (currently GitHub). |
+| **Owner** | `internal/github` |
+| **Inputs** | HTTP request parameters (URL, headers, auth). |
+| **Outputs** | Raw JSON byte payloads. |
+| **Invariants** | Never parses domain types. Never interprets responses. |
+| **Prohibited** | Domain logic, normalization, caching. |
 
-### 2. Facts
+---
 
-Deterministic, evidence-backed aggregates computed from vestiges. Facts answer
-*"what do we know about this user's repository portfolio?"* They are the
-inspectable layer between raw observations and derived indicators.
+### Acquisition — `internal/acquisition`
 
-Defined by `signals.Facts` and produced by `signals.FromRepos`. Examples:
-`TotalRepos`, `OriginalRepos`, `ForkRepos`, `RecentRepos`, `DeepRepos`,
-`ValidRepos`, `LargestRepoSize`, `LatestActivity`, plus the Phase 9 metadata
-facts (`ArchivedRepos`, `PublicRepos`, `PrivateRepos`, `LicensedRepos`,
-`TotalStars`, `TotalForks`, `TotalWatchers`, `TotalOpenIssues`, `TotalTopics`,
-`OldestCreated`, `NewestCreated`).
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Fetches external data and produces DTOs that mirror the API schema. |
+| **Owner** | `internal/acquisition` |
+| **Inputs** | Username, search query, context. |
+| **Outputs** | `RepoDTO`, `UserDTO`, `ContributionsDTO`. |
+| **Invariants** | DTOs are pure data — no intelligence, no computation. |
+| **Prohibited** | Domain model construction, scoring, evaluation. |
 
-Facts introduce **no new indicators**. They only enrich observations with
-deterministic counts and sums.
+---
 
-### 3. Indicators
+### Normalization — `internal/acquisition/normalize.go`
 
-Measured component signals derived from facts. Indicators quantify observations:
-ownership, consistency, depth, activity. Produced by `signals.ExtractSignals`
-and `signals.ExtractSignalsFromFacts`, yielding `signals.Signals` and a
-`signals.RawScore` of the three component scores (ownership, consistency,
-depth).
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Maps DTOs to domain vestiges. The boundary between "what GitHub returns" and "what Atlas knows." |
+| **Owner** | `internal/acquisition` |
+| **Inputs** | `RepoDTO`, `UserDTO`, `ContributionsDTO`. |
+| **Outputs** | `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`. |
+| **Invariants** | One-to-one: one DTO → one vestige. No aggregation, no derivation, no omitting fields without documentation. |
+| **Prohibited** | Aggregation, scoring, evaluation, filtering. |
 
-Indicators are measurements, not judgments. The overall score is **not** an
-indicator — it is an evaluation.
+---
 
-### 4. Profile
+### Vestiges — `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`
 
-The canonical candidate aggregate. `index.Profile` stores vestiges-level
-observations (facts, signals, metadata, contributions) and is the single source
-of truth for what Atlas knows about a candidate. It stores observations, not
-evaluations.
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | The canonical raw observation of a software development artifact. Every acquisition backend (REST, GraphQL, GitFut, local git) produces vestiges; Atlas never acquires from them directly. |
+| **Owner** | Current: `internal/signals` (type), `internal/profile` (metadata), `internal/contributions` (summary). |
+| **Inputs** | Normalized output from acquisition. |
+| **Outputs** | `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`. |
+| **Invariants** | Vestiges are observables, not computations. Fields are organized into observation domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure. |
+| **Prohibited** | Derivation, aggregation, scoring, evaluation. |
 
-### 5. Evaluation
+**Observation domains of `RepositoryVestige`:**
 
-How scores are interpreted. `internal/evaluation` owns:
+- **Identity** — Name, Visibility, Archived, Template
+- **Ownership** — Fork
+- **Timeline** — CreatedAt, UpdatedAt, PushedAt
+- **Technology** — License, Topics, DefaultBranch
+- **Maintenance** — OpenIssues, Stars, Forks, Watchers
+- **Structure** — Size
 
-- Overall score assembly — `OverallScore(RawScore)` combines the three
-  component scores with the canonical ranking weights (ownership `0.3`, consistency
-  `0.4`, depth `0.3`).
-- Small-sample penalty — `ApplySmallSamplePenalty(rawScore, repoCount)`
-  down-weights evaluations built on too few repositories (threshold `3`,
-  multiplier `7`).
-- Confidence classification — `ClassifyConfidence` maps a repo count to
-  `high` / `moderate` / `low`.
-- Ranking policy — `RankingPolicy{ Score }` is the single type consumed by the
-  engine and projection layers for ordering.
+**Future vestige families** (documented placeholders, no implementation):
 
-Evaluation is the single source of truth for score interpretation.
+- `CommitVestige`
+- `PullRequestVestige`
+- `ReviewVestige`
+- `ReleaseVestige`
+- `ContributorVestige`
+- `OrganizationVestige`
 
-### 6. Intelligence
+---
 
-The assembled result of applying Evaluation to a Profile. Intelligence is the
-evaluated candidate: a Profile enriched with an overall score, confidence, and
-ranking. It is what the projection layer renders into consumer shapes.
+### Facts — `signals.RepositoryFacts`
 
-### 7. Projections
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Deterministic, evidence-backed aggregates computed from vestiges. Facts answer *"what do we know?"* without interpretation. |
+| **Owner** | Current: `internal/signals`. |
+| **Inputs** | `[]signals.RepositoryVestige`. |
+| **Outputs** | `signals.RepositoryFacts`. |
+| **Invariants** | Purely derivable from vestiges: given the same vestiges, identical facts. Never fetch, never observe, never evaluate. |
+| **Prohibited** | Observation (I/O), scoring, evaluation, confidence. |
 
-Consumer-shaped, read-only, deterministic views (`internal/projection`):
-`AnalyzeProjection`, `InspectProjection`, `SearchProjection`. Projections
-**do not** compute overall scores or penalties — those are supplied by
-Evaluation. Projections only re-shape and order.
+**Fact families** (current and documented placeholders):
 
-### 8. Consumers
+| Fact Family | Status | Fields |
+|-------------|--------|--------|
+| `RepositoryFacts` | ✅ Implemented | TotalRepos, OriginalRepos, ForkRepos, RecentRepos, DeepRepos, ValidRepos, ValidOriginalRepos, LargestRepoSize, LatestActivity, ArchivedRepos, TemplateRepos, PublicRepos, PrivateRepos, LicensedRepos, TotalStars, TotalForks, TotalWatchers, TotalOpenIssues, TotalTopics, OldestCreated, NewestCreated |
+| `ContributionFacts` | 📝 Placeholder | (no fields yet) |
+| `TechnologyFacts` | 📝 Placeholder | (no fields yet) |
+| `BehaviourFacts` | 📝 Placeholder | (no fields yet) |
+| `CollaborationFacts` | 📝 Placeholder | (no fields yet) |
 
-Presentation surfaces that render intelligence: `cmd/atlas` (CLI),
-`cmd/server` (HTTP API), and `web` (UI). Consumers format; they never derive
-facts, signals, scores, or rankings.
+---
+
+### Signals — `signals.Signals`, `signals.RawScore`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Normalized measurements derived from facts. Signals quantify observations: ownership, consistency, depth, activity. |
+| **Owner** | Current: `internal/signals`. |
+| **Inputs** | `signals.RepositoryFacts`. |
+| **Outputs** | `signals.Signals` (four float64 values in [0, 1]), `signals.RawScore` (three component integer scores in [0, 100]). |
+| **Invariants** | Deterministic, reproducible, bounded [0,1], explainable, fact-derived. Signals measure facts — they never observe vestiges directly. |
+| **Prohibited** | I/O, aggregation, scoring beyond measurement, confidence, ranking. |
+
+**Current signals:**
+
+| Signal | Range | Derives From |
+|-----------|-------|--------------|
+| `Ownership` | [0, 1] | `ValidOriginalRepos / ValidRepos` |
+| `Consistency` | [0, 1] | `RecentRepos / max(10, OriginalRepos)` |
+| `Depth` | [0, 1] | `DeepRepos / max(5, OriginalRepos)` |
+| `Activity` | {0.1, 0.4, 0.7, 1.0} | Time since `LatestActivity` |
+
+**Philosophy:**
+
+Signals must satisfy:
+
+- **Deterministic** — same facts → same indicators
+- **Reproducible** — independent computation yields identical results
+- **Bounded** — always in [0, 1]
+- **Explainable** — every value traces to specific facts
+- **Fact-derived** — signals never read vestiges directly
+
+Signals are **not**:
+
+- Heuristic guesses
+- AI or ML opinions
+- Reputation scores
+- Popularity metrics
+- Evaluation judgments
+
+---
+
+### Profile — `index.Profile`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Atlas' complete assembled understanding of a candidate. Profile is context — not intelligence. It aggregates facts, indicators, metadata, and contributions into a single canonical record. |
+| **Owner** | `internal/index`. |
+| **Inputs** | `signals.RepositoryFacts`, `signals.Signals`, `profile.UserMetadata`, `contributions.Summary`. |
+| **Outputs** | `index.Profile` (the assembled candidate state before evaluation). |
+| **Invariants** | Profile is assembled, not interpreted. It is the single source of truth for what Atlas knows about a candidate before evaluation. |
+| **Prohibited** | Scoring, confidence, ranking, presentation, persistence concerns. |
+
+**Key distinction:**
+
+- **Profile** answers: *What do we know about this candidate?*
+- **Intelligence** (future) answers: *What does that knowledge mean?*
+
+Profile is not:
+- A persistence format
+- A presentation view
+- An evaluation result
+- An intelligence conclusion
+
+---
+
+### Evaluation — `internal/evaluation`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Score interpretation, confidence classification, penalty application, and ranking policy. Evaluation owns the transition from "what we know" to "how to interpret it." |
+| **Owner** | `internal/evaluation`. |
+| **Inputs** | `signals.RawScore`, repository count, `index.Profile.Signals`. |
+| **Outputs** | `int` (overall score 0–100), `evaluation.RankingPolicy.Score`, confidence classification. |
+| **Invariants** | Never observes, never measures, never aggregates. Only interprets. |
+| **Prohibited** | I/O, vestige observation, fact derivation, indicator measurement, presentation. |
+
+**Owns:**
+
+- `OverallScore` — weighted sum of component scores (ownership 0.3, consistency 0.4, depth 0.3)
+- `ApplySmallSamplePenalty` — down-weights evaluations with <3 repositories
+- `ClassifyConfidence` — repo-count → {high, moderate, low}
+- `RankingPolicy` — type consumed by engine and projection for ordering
+
+---
+
+### Engine — `internal/engine`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Search query execution, candidate filtering, matching, ordering, and ranking. Engine is the orchestration layer between stored profiles and search consumers. |
+| **Owner** | `internal/engine`. |
+| **Inputs** | `index.Index`, `engine.Query`, `evaluation.RankingPolicy`. |
+| **Outputs** | `[]engine.Result` (filtered and ordered candidates). |
+| **Invariants** | Pure computation: no I/O, no acquisition, no vestige production. |
+| **Prohibited** | I/O, scoring policy, presentation, evaluation. |
+
+---
+
+### Projection — `internal/projection`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Consumer-shaped, read-only, deterministic views of the domain. Projection is the terminal transformation before presentation — it reshapes, never recomputes. |
+| **Owner** | `internal/projection`. |
+| **Inputs** | `index.Profile`, `evaluation` outputs. |
+| **Outputs** | `AnalyzeProjection`, `InspectProjection`, `SearchProjection`. |
+| **Invariants** | No computation beyond reshaping and ordering. No business logic. |
+| **Prohibited** | Scoring, evaluation, confidence, acquisition, fact derivation, indicator measurement. |
+
+---
+
+### Consumers — `cmd/atlas`, `cmd/server`, `web`
+
+| Attribute | Definition |
+|-----------|------------|
+| **Purpose** | Presentation surfaces that render intelligence for human consumption. |
+| **Owner** | `cmd/atlas` (CLI), `cmd/server` (HTTP API), `web` (UI). |
+| **Inputs** | Projections. |
+| **Outputs** | CLI output, JSON responses, web pages. |
+| **Invariants** | Format only; never derive. |
+| **Prohibited** | Any derivation of facts, indicators, scores, rankings, or projections. |
+
+---
+
+## Intelligence Domains
+
+Atlas organizes intelligence into six domains. Each domain owns a family of
+vestiges, facts, and eventually indicators. No implementation exists beyond
+`Repository` — the remaining five are documented ownership boundaries.
+
+| Domain | Vestige Families | Fact Families | Signal Families | Status |
+|--------|-----------------|---------------|-------------------|--------|
+| **Repository** | `RepositoryVestige` | `RepositoryFacts` | Ownership, Consistency, Depth, Activity | ✅ Active |
+| **Contribution** | *(future)* | `ContributionFacts` | *(future)* | 📝 Documented |
+| **Technology** | *(future)* | `TechnologyFacts` | *(future)* | 📝 Documented |
+| **Behaviour** | *(future)* | `BehaviourFacts` | *(future)* | 📝 Documented |
+| **Collaboration** | *(future)* | `CollaborationFacts` | *(future)* | 📝 Documented |
+| **Career** | *(future)* | *(future)* | *(future)* | 📝 Documented |
 
 ---
 
@@ -125,14 +286,14 @@ facts, signals, scores, or rankings.
 Every stage of the intelligence model is governed by the same principles:
 
 - **Deterministic** — identical inputs always yield identical output. No
-  randomness, no clock-dependent results in scored paths (the activity indicator
-  is deterministic *given a reference time*; see caveat below).
+  randomness, no clock-dependent results in scored paths (the activity signal
+  is deterministic *given a reference time*; see the determinism note below).
 - **Explainable** — every score can be traced to the facts and weights that
   produced it.
 - **Composable** — stages stack cleanly; each consumes only the output of the
   stage above it.
 - **Observable** — intermediate stages are inspectable (`InspectProjection`
-  exposes raw vestiges, facts, and indicators).
+  exposes raw vestiges, facts, and signals).
 - **Inspectable** — there is no "black box"; the full pipeline can be dumped.
 - **Evidence-backed** — conclusions reference the observations that support
   them.
@@ -144,13 +305,25 @@ Every stage of the intelligence model is governed by the same principles:
 
 ---
 
-## Non-Determinism Caveat
+## Determinism Note
 
-The `activity` indicator uses `time.Now()` during signal extraction to bucket
-repositories into recent windows. This makes activity deterministic **given a
-reference time**, but not purely a function of stored vestiges. This is a known
-limitation and is explicitly **out of scope for v0.8.13**. All other stages are
-fully deterministic from stored observations.
+All derived computations accept an explicit `referenceTime` parameter. The
+`activity` signal is deterministic given the same reference time, removing
+any hidden dependency on the system clock. See `FromRepos`, `ExtractSignals`,
+and `ExtractSignalsFromFacts` in `internal/signals`.
+
+---
+
+## Intelligence Roadmap
+
+| Version | Theme | Scope |
+|---------|-------|-------|
+| **v0.8.14** | Intelligence Ontology | Vocabulary freeze, RepositoryVestige, RepositoryFacts, documentation, certification |
+| **v0.8.15** | GraphQL Acquisition | GitHub GraphQL client, query fragments, batching, pagination, rate limiting, REST/GraphQL parity, vestige enrichment |
+| **v0.8.16** | Repository & Technology Facts | Expanded RepositoryVestige, RepositoryFacts enrichment, TechnologyFacts implementation |
+| **v0.8.17** | Behaviour & Collaboration Facts | ContributionVestige, BehaviourFacts, CollaborationFacts |
+| **v0.8.18** | Signal Expansion | New signals for behaviour, collaboration, technology breadth |
+| **v0.9.0** | Candidate Intelligence Engine | All intelligence converges; projection consumes Intelligence, not Profile; Lattice readiness |
 
 ---
 
@@ -165,7 +338,12 @@ fully deterministic from stored observations.
   `RankingStrategy` interface; projection and engine consume
   `evaluation.RankingPolicy`.
 - **v0.8.13 (Phase 9)** — Repository Intelligence Foundation. Enriched
-  `RepoDTO`, `signals.Repo`, `NormalizeRepos`, and `signals.Facts` with
+  `RepoDTO`, `RepositoryVestige`, and `RepositoryFacts` with
   repository metadata (visibility, archived, template, license, topics, stars,
   forks, watchers, open issues, created/pushed dates, default branch). **No new
-  indicators were introduced** — only observations and deterministic facts.
+  signals were introduced** — only observations and deterministic facts.
+- **v0.8.14** — Intelligence Ontology release. Established the canonical
+  vocabulary, layer definitions with invariants, observation domains,
+  intelligence domains, and frozen roadmap. Renamed `Repo` → `RepositoryVestige`
+  and `Facts` → `RepositoryFacts`. Introduced documented placeholder types for
+  future fact families.

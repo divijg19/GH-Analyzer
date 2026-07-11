@@ -6,21 +6,21 @@ import (
 )
 
 func TestFromReposEmpty(t *testing.T) {
-	f := FromRepos(nil)
+	f := FromRepos(nil, refTime)
 	assertZeroFacts(t, f)
 
-	f = FromRepos([]Repo{})
+	f = FromRepos([]RepositoryVestige{}, refTime)
 	assertZeroFacts(t, f)
 }
 
 func TestFromReposCountsTotalRepos(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(20)},
 		{Fork: true, Size: 100, UpdatedAt: daysAgo(30)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.TotalRepos != 3 {
 		t.Fatalf("expected TotalRepos 3, got %d", f.TotalRepos)
@@ -28,7 +28,7 @@ func TestFromReposCountsTotalRepos(t *testing.T) {
 }
 
 func TestFromReposCountsOriginalAndForkRepos(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(20)},
 		{Fork: true, Size: 100, UpdatedAt: daysAgo(30)},
@@ -36,7 +36,7 @@ func TestFromReposCountsOriginalAndForkRepos(t *testing.T) {
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(50)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.OriginalRepos != 3 {
 		t.Fatalf("expected OriginalRepos 3, got %d", f.OriginalRepos)
@@ -50,13 +50,13 @@ func TestFromReposCountsOriginalAndForkRepos(t *testing.T) {
 }
 
 func TestFromReposRecentReposWithinWindow(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(89)},
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(91)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.RecentRepos != 2 {
 		t.Fatalf("expected RecentRepos 2 (10 and 89 days), got %d", f.RecentRepos)
@@ -64,12 +64,12 @@ func TestFromReposRecentReposWithinWindow(t *testing.T) {
 }
 
 func TestFromReposForksNotCountedAsRecent(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 100, UpdatedAt: daysAgo(5)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.RecentRepos != 1 {
 		t.Fatalf("expected RecentRepos 1 (fork excluded), got %d", f.RecentRepos)
@@ -77,14 +77,14 @@ func TestFromReposForksNotCountedAsRecent(t *testing.T) {
 }
 
 func TestFromReposDeepReposAboveThreshold(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: minDepthRepoSize, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: minDepthRepoSize + 1, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: minDepthRepoSize - 1, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.DeepRepos != 2 {
 		t.Fatalf("expected DeepRepos 2 (exactly at threshold and above), got %d", f.DeepRepos)
@@ -92,12 +92,12 @@ func TestFromReposDeepReposAboveThreshold(t *testing.T) {
 }
 
 func TestFromReposForksNotCountedAsDeep(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 1000, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.DeepRepos != 1 {
 		t.Fatalf("expected DeepRepos 1 (fork excluded despite size), got %d", f.DeepRepos)
@@ -105,14 +105,14 @@ func TestFromReposForksNotCountedAsDeep(t *testing.T) {
 }
 
 func TestFromReposValidReposExcludesZeroSize(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 200, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.ValidRepos != 2 {
 		t.Fatalf("expected ValidRepos 2 (size > 0), got %d", f.ValidRepos)
@@ -120,14 +120,14 @@ func TestFromReposValidReposExcludesZeroSize(t *testing.T) {
 }
 
 func TestFromReposValidOriginalReposExcludesForksAndZeroSize(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 200, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 50, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.ValidOriginalRepos != 2 {
 		t.Fatalf("expected ValidOriginalRepos 2 (non-fork, size > 0), got %d", f.ValidOriginalRepos)
@@ -135,14 +135,14 @@ func TestFromReposValidOriginalReposExcludesForksAndZeroSize(t *testing.T) {
 }
 
 func TestFromReposLargestRepoSize(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 999, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 500, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.LargestRepoSize != 999 {
 		t.Fatalf("expected LargestRepoSize 999, got %d", f.LargestRepoSize)
@@ -150,12 +150,12 @@ func TestFromReposLargestRepoSize(t *testing.T) {
 }
 
 func TestFromReposLargestRepoSizeWithAllZeros(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 		{Fork: true, Size: 0, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.LargestRepoSize != 0 {
 		t.Fatalf("expected LargestRepoSize 0, got %d", f.LargestRepoSize)
@@ -164,13 +164,13 @@ func TestFromReposLargestRepoSizeWithAllZeros(t *testing.T) {
 
 func TestFromReposLatestActivity(t *testing.T) {
 	now := time.Now()
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 100, UpdatedAt: now.Add(-48 * time.Hour)},
 		{Fork: false, Size: 100, UpdatedAt: now.Add(-72 * time.Hour)},
 		{Fork: false, Size: 100, UpdatedAt: now.Add(-24 * time.Hour)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	expected := now.Add(-24 * time.Hour)
 	if !f.LatestActivity.Equal(expected) {
@@ -180,12 +180,12 @@ func TestFromReposLatestActivity(t *testing.T) {
 
 func TestFromReposLatestActivityAcrossForksAndOriginals(t *testing.T) {
 	now := time.Now()
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: true, Size: 100, UpdatedAt: now.Add(-1 * time.Hour)},
 		{Fork: false, Size: 100, UpdatedAt: now.Add(-48 * time.Hour)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if !f.LatestActivity.Equal(now.Add(-1 * time.Hour)) {
 		t.Fatalf("expected LatestActivity to be fork's recent update, got %v", f.LatestActivity)
@@ -193,13 +193,13 @@ func TestFromReposLatestActivityAcrossForksAndOriginals(t *testing.T) {
 }
 
 func TestFromReposAllOriginalAllRecentAllDeepAllValid(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 200, UpdatedAt: daysAgo(5)},
 		{Fork: false, Size: 150, UpdatedAt: daysAgo(10)},
 		{Fork: false, Size: 100, UpdatedAt: daysAgo(15)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.TotalRepos != 3 {
 		t.Fatalf("TotalRepos: 3 != %d", f.TotalRepos)
@@ -225,12 +225,12 @@ func TestFromReposAllOriginalAllRecentAllDeepAllValid(t *testing.T) {
 }
 
 func TestFromReposAllForks(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: true, Size: 100, UpdatedAt: daysAgo(5)},
 		{Fork: true, Size: 200, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.OriginalRepos != 0 {
 		t.Fatalf("OriginalRepos: 0 != %d", f.OriginalRepos)
@@ -253,11 +253,11 @@ func TestFromReposAllForks(t *testing.T) {
 }
 
 func TestFromReposSingleRepo(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: false, Size: 75, UpdatedAt: daysAgo(30)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.TotalRepos != 1 {
 		t.Fatalf("TotalRepos: 1 != %d", f.TotalRepos)
@@ -289,7 +289,7 @@ func TestFromReposMetadataFacts(t *testing.T) {
 	createdOld := time.Date(2018, 1, 2, 0, 0, 0, 0, time.UTC)
 	createdNew := time.Date(2023, 6, 7, 0, 0, 0, 0, time.UTC)
 
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{
 			Fork: false, Size: 100, UpdatedAt: daysAgo(10),
 			Visibility: "public", License: "mit", Topics: []string{"go", "cli"},
@@ -311,7 +311,7 @@ func TestFromReposMetadataFacts(t *testing.T) {
 		},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.ArchivedRepos != 1 {
 		t.Fatalf("ArchivedRepos: 1 != %d", f.ArchivedRepos)
@@ -352,12 +352,12 @@ func TestFromReposMetadataFacts(t *testing.T) {
 }
 
 func TestFromReposNoOriginalRepos(t *testing.T) {
-	repos := []Repo{
+	repos := []RepositoryVestige{
 		{Fork: true, Size: 0, UpdatedAt: daysAgo(5)},
 		{Fork: true, Size: 0, UpdatedAt: daysAgo(10)},
 	}
 
-	f := FromRepos(repos)
+	f := FromRepos(repos, refTime)
 
 	if f.OriginalRepos != 0 {
 		t.Fatalf("OriginalRepos: 0 != %d", f.OriginalRepos)
@@ -370,7 +370,7 @@ func TestFromReposNoOriginalRepos(t *testing.T) {
 	}
 }
 
-func assertZeroFacts(t *testing.T, f Facts) {
+func assertZeroFacts(t *testing.T, f RepositoryFacts) {
 	t.Helper()
 
 	if f.TotalRepos != 0 {
@@ -405,7 +405,7 @@ func assertZeroFacts(t *testing.T, f Facts) {
 func TestExtractSignalsEquivalence(t *testing.T) {
 	cases := []struct {
 		name  string
-		repos []Repo
+		repos []RepositoryVestige
 	}{
 		{
 			name:  "empty",
@@ -413,11 +413,11 @@ func TestExtractSignalsEquivalence(t *testing.T) {
 		},
 		{
 			name:  "single original",
-			repos: []Repo{{Fork: false, Size: 100, UpdatedAt: daysAgo(10)}},
+			repos: []RepositoryVestige{{Fork: false, Size: 100, UpdatedAt: daysAgo(10)}},
 		},
 		{
 			name: "mixed original and fork",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 				{Fork: true, Size: 500, UpdatedAt: daysAgo(5)},
 				{Fork: false, Size: 60, UpdatedAt: daysAgo(89)},
@@ -427,47 +427,47 @@ func TestExtractSignalsEquivalence(t *testing.T) {
 		},
 		{
 			name: "all forks",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: true, Size: 100, UpdatedAt: daysAgo(5)},
 				{Fork: true, Size: 200, UpdatedAt: daysAgo(10)},
 			},
 		},
 		{
 			name: "all zero size",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 0, UpdatedAt: daysAgo(5)},
 				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 			},
 		},
 		{
 			name: "boundary recent",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(90)},
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(91)},
 			},
 		},
 		{
 			name: "many repos",
-			repos: func() []Repo {
-				r := make([]Repo, 0, 20)
+			repos: func() []RepositoryVestige {
+				r := make([]RepositoryVestige, 0, 20)
 				for i := 0; i < 16; i++ {
-					r = append(r, Repo{Fork: false, Size: 100, UpdatedAt: daysAgo(10)})
+					r = append(r, RepositoryVestige{Fork: false, Size: 100, UpdatedAt: daysAgo(10)})
 				}
 				for i := 0; i < 4; i++ {
-					r = append(r, Repo{Fork: false, Size: 100, UpdatedAt: daysAgo(120)})
+					r = append(r, RepositoryVestige{Fork: false, Size: 100, UpdatedAt: daysAgo(120)})
 				}
 				return r
 			}(),
 		},
 		{
 			name: "single stale old repo",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(300)},
 			},
 		},
 		{
 			name: "varied activity levels",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(60)},
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(150)},
@@ -476,7 +476,7 @@ func TestExtractSignalsEquivalence(t *testing.T) {
 		},
 		{
 			name: "deep threshold boundary",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: minDepthRepoSize, UpdatedAt: daysAgo(10)},
 				{Fork: false, Size: minDepthRepoSize - 1, UpdatedAt: daysAgo(10)},
 				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
@@ -484,7 +484,7 @@ func TestExtractSignalsEquivalence(t *testing.T) {
 		},
 		{
 			name: "ownership mixed valid zero size",
-			repos: []Repo{
+			repos: []RepositoryVestige{
 				{Fork: false, Size: 0, UpdatedAt: daysAgo(10)},
 				{Fork: true, Size: 0, UpdatedAt: daysAgo(10)},
 				{Fork: false, Size: 100, UpdatedAt: daysAgo(10)},
@@ -495,8 +495,8 @@ func TestExtractSignalsEquivalence(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s1 := ExtractSignals(tc.repos)
-			s2 := ExtractSignalsFromFacts(FromRepos(tc.repos))
+			s1 := ExtractSignals(tc.repos, refTime)
+			s2 := ExtractSignalsFromFacts(FromRepos(tc.repos, refTime), refTime)
 
 			if !almostEqual(s1.Ownership, s2.Ownership) {
 				t.Fatalf("Ownership: ExtractSignals=%.4f ExtractSignalsFromFacts=%.4f", s1.Ownership, s2.Ownership)

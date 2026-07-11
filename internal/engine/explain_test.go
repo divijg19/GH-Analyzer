@@ -45,7 +45,7 @@ func TestExplainNoConditions(t *testing.T) {
 
 func TestExplainWithEvidence(t *testing.T) {
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
-	facts := &signals.Facts{
+	facts := &signals.RepositoryFacts{
 		OriginalRepos:      38,
 		RecentRepos:        35,
 		DeepRepos:          12,
@@ -111,7 +111,7 @@ func TestExplainWithEvidence(t *testing.T) {
 
 func TestExplainWithEvidenceOnlyMatchedSignals(t *testing.T) {
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
-	facts := &signals.Facts{
+	facts := &signals.RepositoryFacts{
 		OriginalRepos:      38,
 		RecentRepos:        35,
 		DeepRepos:          12,

@@ -28,7 +28,7 @@ func ParseCondition(raw string) (engine.Condition, error) {
 		if signal == "" {
 			return engine.Condition{}, fmt.Errorf("invalid condition %q: missing signal before operator", raw)
 		}
-		if !IsAllowedSignal(signal) {
+		if !isAllowedSignal(signal) {
 			return engine.Condition{}, fmt.Errorf("invalid signal %q; expected consistency, ownership, depth, or activity", signal)
 		}
 
@@ -36,7 +36,7 @@ func ParseCondition(raw string) (engine.Condition, error) {
 		if valueText == "" {
 			return engine.Condition{}, fmt.Errorf("invalid condition %q: missing value after operator", raw)
 		}
-		if StartsWithOperator(valueText) {
+		if startsWithOperator(valueText) {
 			return engine.Condition{}, fmt.Errorf("invalid condition %q", raw)
 		}
 
@@ -67,7 +67,7 @@ func NormalizeThreshold(value float64) (float64, error) {
 	return value, nil
 }
 
-func IsAllowedSignal(signal string) bool {
+func isAllowedSignal(signal string) bool {
 	switch signal {
 	case signals.SignalConsistency, signals.SignalOwnership, signals.SignalDepth, signals.SignalActivity:
 		return true
@@ -76,7 +76,7 @@ func IsAllowedSignal(signal string) bool {
 	}
 }
 
-func StartsWithOperator(value string) bool {
+func startsWithOperator(value string) bool {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return false
@@ -100,5 +100,5 @@ func LooksLikeCondition(candidate string) bool {
 		return false
 	}
 
-	return IsAllowedSignal(fields[0])
+	return isAllowedSignal(fields[0])
 }

@@ -37,24 +37,6 @@ func MapIntent(input string) (engine.Query, error) {
 	return engine.Query{Conditions: conditions}, nil
 }
 
-func queryFromPreset(name string) (engine.Query, error) {
-	preset, err := presets.Preset(strings.ToLower(strings.TrimSpace(name)))
-	if err != nil {
-		return engine.Query{}, err
-	}
-
-	conditions := make([]engine.Condition, 0, len(preset.Conditions))
-	for _, condition := range preset.Conditions {
-		conditions = append(conditions, engine.Condition{
-			Signal:   condition.Signal,
-			Operator: condition.Operator,
-			Value:    condition.Value,
-		})
-	}
-
-	return engine.Query{Conditions: conditions, Limit: preset.Limit}, nil
-}
-
 func parseInput(input string) ([]engine.Condition, []engine.Condition, error) {
 	tokens := strings.Fields(input)
 	keywordConditions := make([]engine.Condition, 0, len(tokens))
@@ -118,14 +100,12 @@ func keywordConditionsForToken(token string) ([]engine.Condition, bool) {
 	case "beginner":
 		return []engine.Condition{{Signal: signals.SignalDepth, Operator: "<=", Value: 0.4}}, true
 	case "strong":
-		query, err := queryFromPreset("strong")
+		query, err := presets.Preset("strong")
 		if err != nil {
 			return nil, false
 		}
 
-		conditions := make([]engine.Condition, 0, len(query.Conditions))
-		conditions = append(conditions, query.Conditions...)
-		return conditions, true
+		return query.Conditions, true
 	default:
 		return nil, false
 	}

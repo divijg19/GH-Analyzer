@@ -41,13 +41,13 @@ func TestBuildDistributionSorted(t *testing.T) {
 func TestPercentile(t *testing.T) {
 	sorted := []float64{0.2, 0.5, 0.8}
 
-	if got := Percentile(sorted, 0.2); math.Abs(got-(1.0/3.0)) > 1e-9 {
+	if got := percentile(sorted, 0.2); math.Abs(got-(1.0/3.0)) > 1e-9 {
 		t.Fatalf("expected ~0.33, got %.8f", got)
 	}
-	if got := Percentile(sorted, 0.5); math.Abs(got-(2.0/3.0)) > 1e-9 {
+	if got := percentile(sorted, 0.5); math.Abs(got-(2.0/3.0)) > 1e-9 {
 		t.Fatalf("expected ~0.66, got %.8f", got)
 	}
-	if got := Percentile(sorted, 0.8); math.Abs(got-1.0) > 1e-9 {
+	if got := percentile(sorted, 0.8); math.Abs(got-1.0) > 1e-9 {
 		t.Fatalf("expected 1.0, got %.8f", got)
 	}
 }
@@ -55,13 +55,13 @@ func TestPercentile(t *testing.T) {
 func TestPercentileEdgeCases(t *testing.T) {
 	sorted := []float64{0.2, 0.5, 0.5, 0.8}
 
-	if got := Percentile(sorted, 0.5); math.Abs(got-0.75) > 1e-9 {
+	if got := percentile(sorted, 0.5); math.Abs(got-0.75) > 1e-9 {
 		t.Fatalf("expected duplicate percentile 0.75, got %.8f", got)
 	}
-	if got := Percentile(sorted, -1.0); math.Abs(got-0.25) > 1e-9 {
+	if got := percentile(sorted, -1.0); math.Abs(got-0.25) > 1e-9 {
 		t.Fatalf("expected below-range percentile 0.25, got %.8f", got)
 	}
-	if got := Percentile(sorted, 1.2); math.Abs(got-1.0) > 1e-9 {
+	if got := percentile(sorted, 1.2); math.Abs(got-1.0) > 1e-9 {
 		t.Fatalf("expected above-range percentile 1.0, got %.8f", got)
 	}
 }

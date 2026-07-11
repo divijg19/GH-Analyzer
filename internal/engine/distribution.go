@@ -1,4 +1,7 @@
-// Package engine is the orchestration layer for search.
+// Package engine implements the Engine layer of the Atlas Intelligence
+// Ontology (see docs/INTELLIGENCE.md). It owns search query execution,
+// candidate filtering, matching, and ordering. It never acquires, evaluates,
+// or presents — it only computes ranked results from an index.
 //
 // It owns query parsing, candidate filtering, condition matching, and result
 // ordering via RankingStrategy. It never interprets scores or confidence
@@ -36,7 +39,7 @@ func BuildDistribution(profiles []index.Profile, ranking RankingStrategy) Distri
 	return Distribution{Overall: sortedOverall}
 }
 
-func Percentile(sorted []float64, value float64) float64 {
+func percentile(sorted []float64, value float64) float64 {
 	if len(sorted) == 0 {
 		return 0
 	}
@@ -61,7 +64,7 @@ func CalibrateScore(distribution Distribution, rawScore float64) float64 {
 		return rawScore
 	}
 
-	return Percentile(distribution.Overall, rawScore)
+	return percentile(distribution.Overall, rawScore)
 }
 
 func clamp01(value float64) float64 {

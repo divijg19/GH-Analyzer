@@ -18,11 +18,11 @@ import (
 // data without performing network calls and satisfies the live.fetcher
 // interface.
 type mockAcquisitionClient struct {
-	repos     map[string][]signals.Repo
+	repos     map[string][]signals.RepositoryVestige
 	usernames []string
 }
 
-func (m *mockAcquisitionClient) FetchReposNormalized(_ context.Context, username string) ([]signals.Repo, error) {
+func (m *mockAcquisitionClient) FetchReposNormalized(_ context.Context, username string) ([]signals.RepositoryVestige, error) {
 	r, ok := m.repos[username]
 	if !ok {
 		return nil, context.Canceled
@@ -63,7 +63,7 @@ func TestBuildLiveIndexSuccess(t *testing.T) {
 	now := time.Now()
 	mock := &mockAcquisitionClient{
 		usernames: []string{"alice", "bob", "alice"},
-		repos: map[string][]signals.Repo{
+		repos: map[string][]signals.RepositoryVestige{
 			"alice": {{Name: "alice-repo", Size: 100, UpdatedAt: now}},
 			"bob":   {{Name: "bob-repo", Size: 100, UpdatedAt: now}},
 		},
@@ -113,7 +113,7 @@ func TestBuildLiveIndexPartialFailures(t *testing.T) {
 	now := time.Now()
 	mock := &mockAcquisitionClient{
 		usernames: []string{"alice", "bob", "cara"},
-		repos: map[string][]signals.Repo{
+		repos: map[string][]signals.RepositoryVestige{
 			"alice": {{Name: "alice-repo", Size: 100, UpdatedAt: now}},
 			"cara":  {{Name: "cara-repo", Size: 100, UpdatedAt: now}},
 		},
@@ -160,8 +160,8 @@ func TestFetchLiveUsernamesLimitEnforced(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(usernames) != acquisition.MaxUsers {
-		t.Fatalf("expected %d usernames, got %d", acquisition.MaxUsers, len(usernames))
+	if len(usernames) != 20 {
+		t.Fatalf("expected 20 usernames, got %d", len(usernames))
 	}
 	if usernames[0] != "user01" || usernames[len(usernames)-1] != "user20" {
 		t.Fatalf("unexpected limited range: first=%q last=%q", usernames[0], usernames[len(usernames)-1])
