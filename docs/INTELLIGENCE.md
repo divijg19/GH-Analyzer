@@ -133,7 +133,7 @@ Consumers
 
 | Fact Family | Status | Fields |
 |-------------|--------|--------|
-| `RepositoryFacts` | ✅ Implemented | TotalRepos, OriginalRepos, ForkRepos, RecentRepos, DeepRepos, ValidRepos, ValidOriginalRepos, LargestRepoSize, LatestActivity, ArchivedRepos, TemplateRepos, PublicRepos, PrivateRepos, LicensedRepos, TotalStars, TotalForks, TotalWatchers, TotalOpenIssues, TotalTopics, OldestCreated, NewestCreated |
+| `RepositoryFacts` | ✅ Implemented | TotalRepos, OriginalRepos, ForkRepos, RecentRepos, DeepRepos, ValidRepos, ValidOriginalRepos, LargestRepoSize, LatestActivity, ArchivedRepos, TemplateRepos, PublicRepos, PrivateRepos, LicensedRepos, TotalStars, TotalForks, TotalWatchers, TotalOpenIssues, TotalTopics, OldestCreated, NewestCreated, MaxRepoStars, MeanRepoStars, LanguageCount, RankedLanguages, TotalReleases, LatestReleaseAt, ReleasedRepos, TotalPullRequests, TotalCollaborators, ProtectedBranchRepos, DiscussionRepos, ForkRatio, LicensedRatio, ArchivedRatio, PortfolioAgeDays, NewestRepoAgeDays, DaysSinceLatestRelease, MeanRepoSize, TopicBreadth |
 | `ContributionFacts` | 📝 Placeholder | (no fields yet) |
 | `TechnologyFacts` | 📝 Placeholder | (no fields yet) |
 | `BehaviourFacts` | 📝 Placeholder | (no fields yet) |
@@ -354,3 +354,10 @@ and `ExtractSignalsFromFacts` in `internal/signals`.
   specification-driven merge (`mergeVestiges` in `merge.go`). Enriched
   `RepositoryVestige` with 8 GraphQL-authoritative fields across all six
   observation domains. No downstream layers were modified.
+- **v0.8.16** — Repository Intelligence release. Established
+  `REPOSITORY_INTELLIGENCE.md` as the normative source for derived
+  `RepositoryFacts`. Expanded `RepositoryFacts` with flat deterministic facts
+  (star distribution, technology breadth, release/maintenance aggregates, ratio
+  facts, freshness/age) computed solely from existing `RepositoryVestige`
+  fields. No new observations, no new signals, no new layers. Informed by a
+  GitFut research audit (excluded under `research/gitfut/`).
