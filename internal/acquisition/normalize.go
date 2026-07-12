@@ -75,6 +75,59 @@ func NormalizeContributions(dto *ContributionsDTO) *contributions.Summary {
 	}
 }
 
+// normalizeGraphQLRepo maps a GraphQL repository DTO to GraphQL-authoritative
+// RepositoryVestige fields. It returns the fields as a partial vestige for
+// merge with the REST-derived vestige.
+//
+// Only fields documented as GraphQL-authoritative in
+// OBSERVATION_SPECIFICATION.md are populated.
+func normalizeGraphQLRepo(repo *graphQLRepo) signals.RepositoryVestige {
+	if repo == nil {
+		return signals.RepositoryVestige{}
+	}
+
+	var partial signals.RepositoryVestige
+
+	if repo.Languages != nil {
+		dist := make(map[string]int64, len(repo.Languages.Edges))
+		for _, edge := range repo.Languages.Edges {
+			if edge.Node.Name != "" {
+				dist[edge.Node.Name] = edge.Size
+			}
+		}
+		partial.LanguageDistribution = dist
+	}
+
+	if repo.Releases != nil {
+		partial.ReleaseCount = repo.Releases.TotalCount
+		if len(repo.Releases.Nodes) > 0 {
+			partial.LatestReleaseAt = parseTime(repo.Releases.Nodes[0].CreatedAt)
+		}
+	}
+
+	if repo.PullRequests != nil {
+		partial.PullRequestCount = repo.PullRequests.TotalCount
+	}
+
+	if repo.HasDiscussionsEnabled != nil {
+		partial.DiscussionEnabled = *repo.HasDiscussionsEnabled
+	}
+
+	if repo.Parent != nil && repo.Parent.Name != "" {
+		partial.ParentRepository = repo.Parent.Owner.Login + "/" + repo.Parent.Name
+	}
+
+	if repo.Collaborators != nil {
+		partial.CollaboratorCount = repo.Collaborators.TotalCount
+	}
+
+	if repo.BranchProtectionRules != nil {
+		partial.DefaultBranchProtected = repo.BranchProtectionRules.TotalCount > 0
+	}
+
+	return partial
+}
+
 // parseTime parses an RFC3339 timestamp. An empty or unparseable value yields
 // the zero time, mirroring prior decoding behavior for optional timestamps.
 func parseTime(value string) time.Time {

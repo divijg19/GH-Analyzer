@@ -10,27 +10,29 @@ The pipeline is strictly downward:
 ```
 GitHub
    ↓
-Transport          internal/github
+Transport              internal/github
    ↓
-Acquisition        internal/acquisition
+REST + GraphQL         internal/acquisition
    ↓
-Normalization      internal/acquisition/normalize.go
+Normalization          internal/acquisition/normalize.go
    ↓
-Vestiges           signals.RepositoryVestige · profile.UserMetadata · contributions.Summary
+Merge                  internal/acquisition/merge.go
    ↓
-Facts              signals.RepositoryFacts
-    ↓
-Signals            signals.Signals → RawScore
+Vestiges               signals.RepositoryVestige · profile.UserMetadata · contributions.Summary
    ↓
-Profile            index.Profile (aggregates facts, signals, metadata, contributions)
+Facts                  signals.RepositoryFacts
    ↓
-Evaluation         internal/evaluation (overall score, penalty, confidence, ranking policy)
+Signals                signals.Signals → RawScore
    ↓
-Intelligence       Profile + Evaluation output
+Profile                index.Profile (aggregates facts, signals, metadata, contributions)
    ↓
-Projection         internal/projection (presentation shapes)
+Evaluation             internal/evaluation (overall score, penalty, confidence, ranking policy)
    ↓
-Consumers          cmd/atlas · cmd/server · web
+Intelligence           Profile + Evaluation output
+   ↓
+Projection             internal/projection (presentation shapes)
+   ↓
+Consumers              cmd/atlas · cmd/server · web
 ```
 
 The conceptual model behind these layers — Vestiges, Facts, Signals,
@@ -64,15 +66,20 @@ authentication and execution. It has no knowledge of the domain.
 **Owns**
 
 - GitHub REST endpoints and their URLs
-- GitHub DTOs (mirroring GitHub's JSON schema exactly)
+- GitHub GraphQL queries and endpoint
+- GitHub DTOs (mirroring GitHub's JSON schema exactly) for both REST and
+  GraphQL (`repositories.go`, `graphql_types.go`)
 - GitHub endpoint semantics, response handling, pagination
 - GitHub API errors (`APIError`)
 - The acquisition client (`Client`) used by consumers
+- GraphQL query definitions (`graphql_query.go`)
+- Per-repo GraphQL execution (`graphql.go`: `queryRepo`, `fetchGraphQLVestiges`)
 
 **Never owns**
 
 - Signals, Facts, Profiles, business logic
 - Ranking, scoring, evidence
+- Merge policy (merge is an Atlas concern, not acquisition — see Merge below)
 - Presentation
 
 Acquisition owns **GitHub's schema, not ours**. If GitHub changes its API,
@@ -80,24 +87,59 @@ only this layer changes; everything above remains untouched. DTOs mirror
 GitHub field names and types verbatim — timestamps remain raw strings inside
 DTOs and are parsed only during normalization.
 
+Acquisition supports two mechanisms:
+- **REST** via `repositories.go` (`FetchRepos`, `FetchReposNormalized`)
+- **GraphQL** via `graphql.go` (`fetchGraphQLVestiges`)
+
+Both produce DTOs. Normalization converts DTOs to domain vestiges. The
+high-level entry point `FetchReposEnriched` orchestrates REST + GraphQL +
+merge to produce fully observed vestiges. When GraphQL is unavailable,
+REST-only vestiges are returned — GraphQL enrichment is always additive.
+
 ### Normalization — `internal/acquisition/normalize.go`
 
 **Owns**
 
 - Mapping GitHub DTOs to domain models:
-  - `RepoDTO` → `signals.RepositoryVestige`
-  - `UserDTO` → `profile.UserMetadata`
-  - `ContributionsDTO` → `contributions.Summary`
+  - `RepoDTO` → `signals.RepositoryVestige` (`normalizeRepo`)
+  - `graphQLRepo` → `signals.RepositoryVestige` partial (`normalizeGraphQLRepo`)
+  - `UserDTO` → `profile.UserMetadata` (`NormalizeUser`)
+  - `ContributionsDTO` → `contributions.Summary` (`NormalizeContributions`)
 - Timestamp parsing (`created_at` / `updated_at` → `time.Time`, zero-fallback)
 
 **Never performs**
 
 - Network requests
 - Ranking, signal computation, or any business logic
+- Merge of multiple acquisition sources (merge is separate — see Merge below)
 
 Normalization is co-located in `internal/acquisition` (not a separate
 package). It is the single boundary between GitHub's representation and the
-domain's.
+domain's. Both REST and GraphQL DTOs pass through normalization before
+reaching the domain.
+
+### Merge — `internal/acquisition/merge.go`
+
+**Owns**
+
+- Combining REST-derived and GraphQL-derived vestiges into a single final
+  vestige (`mergeVestiges`)
+- Merge policy derived from `OBSERVATION_SPECIFICATION.md` — each field's
+  owner and canonical acquisition mechanism determine which value wins
+- Documentation of the specification-derived merge policy for each field
+
+**Never owns**
+
+- Network requests, DTOs, normalization, signal computation
+
+Merge is Atlas logic, not acquisition logic. It is co-located in
+`internal/acquisition` because it operates on vestiges produced by
+normalization, but its policy is determined by the Observation
+Specification, not by GitHub's API structure. Merge is unconditionally
+additive for GraphQL-authoritative fields because they have no REST overlap;
+no precedence heuristics are used.
+
+---
 
 ### Vestiges — `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`
 
@@ -115,7 +157,11 @@ Vestiges are the lowest layer of the intelligence model: observations Atlas
 records but does not compute. They are the input to Facts. Phase 9 enriched
 `signals.RepositoryVestige` with repository metadata (visibility, archived, template,
 license, topics, stars, forks, watchers, open issues, created/pushed dates,
-default branch) without changing its role as a raw observation.
+default branch) without changing its role as a raw observation. v0.8.15
+further enriched `RepositoryVestige` with GraphQL-acquired observations
+(LanguageDistribution, ReleaseCount, LatestReleaseAt, PullRequestCount,
+DiscussionEnabled, ParentRepository, CollaboratorCount,
+DefaultBranchProtected).
 
 ### Facts — `signals.RepositoryFacts`
 
@@ -332,3 +378,20 @@ and canonicalization with no new intelligence:
 - Removed the speculative future "Insights" stage from the architecture and
   pipeline diagram; `Profile → Evaluation → … → Projection` is now the
   documented canonical flow.
+
+**v0.8.15** completed the observation acquisition architecture:
+
+- Established `docs/OBSERVATION_SPECIFICATION.md` as the normative source for
+  observation ownership and merge policy.
+- Added GitHub GraphQL acquisition: `graphql_types.go` (DTOs),
+  `graphql_query.go` (query), `graphql.go` (executor).
+- Extended normalization with `normalizeGraphQLRepo` for GraphQL DTOs.
+- Added `merge.go` with specification-driven `mergeVestiges`.
+- Enriched `RepositoryVestige` with 8 new GraphQL-authoritative fields:
+  LanguageDistribution, ReleaseCount, LatestReleaseAt, PullRequestCount,
+  DiscussionEnabled, ParentRepository, CollaboratorCount,
+  DefaultBranchProtected.
+- REST remains the baseline; GraphQL enrichment is additive with graceful
+  degradation.
+- No downstream layers (Facts, Signals, Profile, Evaluation, Engine,
+  Projection, Consumers) were modified.

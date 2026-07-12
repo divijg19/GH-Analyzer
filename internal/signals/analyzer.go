@@ -44,6 +44,10 @@ const (
 // acquisition backend (REST, GraphQL, GitFut, local git) produces vestiges;
 // Atlas never acquires from them directly. Fields are grouped into observation
 // domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure.
+//
+// RepositoryVestige represents every observation Atlas currently understands.
+// It does not mirror provider schemas. Growth is deliberate: every new
+// observation must justify its existence.
 type RepositoryVestige struct {
 	// Identity
 	Name       string `json:"name"`
@@ -52,26 +56,34 @@ type RepositoryVestige struct {
 	Template   bool   `json:"template"`
 
 	// Ownership
-	Fork bool `json:"fork"`
+	Fork              bool   `json:"fork"`
+	ParentRepository  string `json:"parent_repository,omitempty"`
+	CollaboratorCount int    `json:"collaborator_count"`
 
 	// Timeline
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	PushedAt  time.Time `json:"pushed_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	PushedAt        time.Time `json:"pushed_at"`
+	LatestReleaseAt time.Time `json:"latest_release_at,omitempty"`
+	ReleaseCount    int       `json:"release_count"`
 
 	// Technology
-	License       string   `json:"license"`
-	Topics        []string `json:"topics"`
-	DefaultBranch string   `json:"default_branch"`
+	License                string           `json:"license"`
+	Topics                 []string         `json:"topics"`
+	DefaultBranch          string           `json:"default_branch"`
+	DefaultBranchProtected bool             `json:"default_branch_protected"`
+	LanguageDistribution   map[string]int64 `json:"language_distribution,omitempty"`
 
 	// Maintenance
-	OpenIssues int `json:"open_issues_count"`
-	Stars      int `json:"stargazers_count"`
-	Forks      int `json:"forks_count"`
-	Watchers   int `json:"watchers_count"`
+	OpenIssues       int `json:"open_issues_count"`
+	Stars            int `json:"stargazers_count"`
+	Forks            int `json:"forks_count"`
+	Watchers         int `json:"watchers_count"`
+	PullRequestCount int `json:"pull_request_count"`
 
 	// Structure
-	Size int `json:"size"`
+	Size              int  `json:"size"`
+	DiscussionEnabled bool `json:"discussion_enabled"`
 }
 
 type Signals struct {

@@ -65,12 +65,12 @@ Consumers
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Fetches external data and produces DTOs that mirror the API schema. |
+| **Purpose** | Fetches external data via REST and GraphQL; produces DTOs that mirror the API schema. |
 | **Owner** | `internal/acquisition` |
-| **Inputs** | Username, search query, context. |
-| **Outputs** | `RepoDTO`, `UserDTO`, `ContributionsDTO`. |
-| **Invariants** | DTOs are pure data — no intelligence, no computation. |
-| **Prohibited** | Domain model construction, scoring, evaluation. |
+| **Inputs** | Username, owner+repo name, search query, context. |
+| **Outputs** | `RepoDTO` (REST), `graphQLRepo` (GraphQL), `UserDTO`, `ContributionsDTO`. |
+| **Invariants** | DTOs are pure data — no intelligence, no computation. REST and GraphQL are acquisition mechanisms only, not intelligence layers. |
+| **Prohibited** | Domain model construction, scoring, evaluation, merge policy. |
 
 ---
 
@@ -80,10 +80,10 @@ Consumers
 |-----------|------------|
 | **Purpose** | Maps DTOs to domain vestiges. The boundary between "what GitHub returns" and "what Atlas knows." |
 | **Owner** | `internal/acquisition` |
-| **Inputs** | `RepoDTO`, `UserDTO`, `ContributionsDTO`. |
-| **Outputs** | `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`. |
-| **Invariants** | One-to-one: one DTO → one vestige. No aggregation, no derivation, no omitting fields without documentation. |
-| **Prohibited** | Aggregation, scoring, evaluation, filtering. |
+| **Inputs** | `RepoDTO` (REST), `graphQLRepo` (GraphQL), `UserDTO`, `ContributionsDTO`. |
+| **Outputs** | `signals.RepositoryVestige` (full from REST, partial from GraphQL), `profile.UserMetadata`, `contributions.Summary`. |
+| **Invariants** | One-to-one: one DTO → one vestige. No aggregation, no derivation, no omitting fields without documentation. Both REST and GraphQL DTOs pass through normalization. |
+| **Prohibited** | Aggregation, scoring, evaluation, filtering, merge of multiple acquisition sources. |
 
 ---
 
@@ -101,11 +101,11 @@ Consumers
 **Observation domains of `RepositoryVestige`:**
 
 - **Identity** — Name, Visibility, Archived, Template
-- **Ownership** — Fork
-- **Timeline** — CreatedAt, UpdatedAt, PushedAt
-- **Technology** — License, Topics, DefaultBranch
-- **Maintenance** — OpenIssues, Stars, Forks, Watchers
-- **Structure** — Size
+- **Ownership** — Fork, ParentRepository, CollaboratorCount
+- **Timeline** — CreatedAt, UpdatedAt, PushedAt, ReleaseCount, LatestReleaseAt
+- **Technology** — License, Topics, DefaultBranch, DefaultBranchProtected, LanguageDistribution
+- **Maintenance** — OpenIssues, Stars, Forks, Watchers, PullRequestCount
+- **Structure** — Size, DiscussionEnabled
 
 **Future vestige families** (documented placeholders, no implementation):
 
@@ -319,7 +319,7 @@ and `ExtractSignalsFromFacts` in `internal/signals`.
 | Version | Theme | Scope |
 |---------|-------|-------|
 | **v0.8.14** | Intelligence Ontology | Vocabulary freeze, RepositoryVestige, RepositoryFacts, documentation, certification |
-| **v0.8.15** | GraphQL Acquisition | GitHub GraphQL client, query fragments, batching, pagination, rate limiting, REST/GraphQL parity, vestige enrichment |
+| **v0.8.15** | Deterministic Observation Acquisition | Observation specification (OBSERVATION_SPECIFICATION.md), GitHub GraphQL acquisition, deterministic merge, expanded RepositoryVestige with 8 Tier 1 fields |
 | **v0.8.16** | Repository & Technology Facts | Expanded RepositoryVestige, RepositoryFacts enrichment, TechnologyFacts implementation |
 | **v0.8.17** | Behaviour & Collaboration Facts | ContributionVestige, BehaviourFacts, CollaborationFacts |
 | **v0.8.18** | Signal Expansion | New signals for behaviour, collaboration, technology breadth |
@@ -347,3 +347,10 @@ and `ExtractSignalsFromFacts` in `internal/signals`.
   intelligence domains, and frozen roadmap. Renamed `Repo` → `RepositoryVestige`
   and `Facts` → `RepositoryFacts`. Introduced documented placeholder types for
   future fact families.
+- **v0.8.15** — Deterministic Observation Acquisition release. Established
+  `OBSERVATION_SPECIFICATION.md` as the normative source for observation
+  ownership and merge policy. Added GitHub GraphQL acquisition (executor,
+  queries, DTOs). Extended normalization with `normalizeGraphQLRepo`. Added
+  specification-driven merge (`mergeVestiges` in `merge.go`). Enriched
+  `RepositoryVestige` with 8 GraphQL-authoritative fields across all six
+  observation domains. No downstream layers were modified.

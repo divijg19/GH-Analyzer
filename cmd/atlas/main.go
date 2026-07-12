@@ -12,7 +12,7 @@ const (
 	defaultDatasetPath = "dataset.json"
 	defaultQueryLimit  = 10
 	defaultQueryPreset = "strong"
-	cliVersion         = "v0.8.14"
+	cliVersion         = "v0.8.15"
 )
 
 func main() {
