@@ -402,6 +402,164 @@ func assertZeroFacts(t *testing.T, f RepositoryFacts) {
 	}
 }
 
+func TestFromReposDerivedIntelligence(t *testing.T) {
+	createdOld := time.Date(2015, 3, 4, 0, 0, 0, 0, time.UTC)
+	createdNew := time.Date(2024, 8, 9, 0, 0, 0, 0, time.UTC)
+	released := time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC)
+
+	repos := []RepositoryVestige{
+		{
+			Fork: false, Size: 100, UpdatedAt: daysAgo(10), CreatedAt: createdOld,
+			Stars: 40, License: "mit", Topics: []string{"go", "cli"},
+			ReleaseCount: 2, LatestReleaseAt: released,
+			PullRequestCount: 5, CollaboratorCount: 3,
+			DefaultBranchProtected: true, DiscussionEnabled: true,
+			LanguageDistribution: map[string]int64{"Go": 800, "Shell": 200},
+		},
+		{
+			Fork: false, Size: 200, UpdatedAt: daysAgo(20), CreatedAt: createdNew,
+			Stars: 10, License: "apache-2.0", Topics: []string{"rust"},
+			ReleaseCount: 1, LatestReleaseAt: time.Time{},
+			PullRequestCount: 1, CollaboratorCount: 1,
+			DefaultBranchProtected: false, DiscussionEnabled: false,
+			LanguageDistribution: map[string]int64{"Rust": 900, "Go": 100},
+		},
+		{
+			Fork: true, Size: 10, UpdatedAt: daysAgo(30), CreatedAt: createdNew,
+			Stars: 5, License: "", Topics: nil,
+			ReleaseCount: 0, LatestReleaseAt: time.Time{},
+			PullRequestCount: 0, CollaboratorCount: 0,
+			DefaultBranchProtected: false, DiscussionEnabled: false,
+			LanguageDistribution: map[string]int64{"JavaScript": 500},
+		},
+	}
+
+	f := FromRepos(repos, refTime)
+
+	// Star distribution
+	if f.MaxRepoStars != 40 {
+		t.Fatalf("MaxRepoStars: 40 != %d", f.MaxRepoStars)
+	}
+	if got := f.MeanRepoStars; !almostEqual(got, 55.0/3.0) {
+		t.Fatalf("MeanRepoStars: %.4f != %.4f", got, 55.0/3.0)
+	}
+
+	// Technology breadth (union of Go, Shell, Rust, JavaScript = 4 distinct)
+	if f.LanguageCount != 4 {
+		t.Fatalf("LanguageCount: 4 != %d", f.LanguageCount)
+	}
+	want := []string{"Go", "Rust", "JavaScript", "Shell"}
+	if len(f.RankedLanguages) != len(want) {
+		t.Fatalf("RankedLanguages length: %d != %d (%v)", len(f.RankedLanguages), len(want), f.RankedLanguages)
+	}
+	for i, w := range want {
+		if f.RankedLanguages[i] != w {
+			t.Fatalf("RankedLanguages[%d]: %q != %q (full: %v)", i, f.RankedLanguages[i], w, f.RankedLanguages)
+		}
+	}
+
+	// Release & maintenance aggregates
+	if f.TotalReleases != 3 {
+		t.Fatalf("TotalReleases: 3 != %d", f.TotalReleases)
+	}
+	if f.ReleasedRepos != 2 {
+		t.Fatalf("ReleasedRepos: 2 != %d", f.ReleasedRepos)
+	}
+	if !f.LatestReleaseAt.Equal(released) {
+		t.Fatalf("LatestReleaseAt: %v != %v", f.LatestReleaseAt, released)
+	}
+	if f.TotalPullRequests != 6 {
+		t.Fatalf("TotalPullRequests: 6 != %d", f.TotalPullRequests)
+	}
+	if f.TotalCollaborators != 4 {
+		t.Fatalf("TotalCollaborators: 4 != %d", f.TotalCollaborators)
+	}
+	if f.ProtectedBranchRepos != 1 {
+		t.Fatalf("ProtectedBranchRepos: 1 != %d", f.ProtectedBranchRepos)
+	}
+	if f.DiscussionRepos != 1 {
+		t.Fatalf("DiscussionRepos: 1 != %d", f.DiscussionRepos)
+	}
+
+	// Ratio facts (in [0, 1])
+	if !almostEqual(f.ForkRatio, 1.0/3.0) {
+		t.Fatalf("ForkRatio: %.4f != %.4f", f.ForkRatio, 1.0/3.0)
+	}
+	if !almostEqual(f.LicensedRatio, 2.0/3.0) {
+		t.Fatalf("LicensedRatio: %.4f != %.4f", f.LicensedRatio, 2.0/3.0)
+	}
+	if f.ArchivedRatio != 0 {
+		t.Fatalf("ArchivedRatio: 0 != %.4f", f.ArchivedRatio)
+	}
+	if f.ForkRatio < 0 || f.ForkRatio > 1 || f.LicensedRatio < 0 || f.LicensedRatio > 1 || f.ArchivedRatio < 0 || f.ArchivedRatio > 1 {
+		t.Fatalf("ratio facts out of [0,1]: fork=%.4f licensed=%.4f archived=%.4f", f.ForkRatio, f.LicensedRatio, f.ArchivedRatio)
+	}
+
+	// Freshness & age
+	if f.PortfolioAgeDays != int(refTime.Sub(createdOld).Hours()/24) {
+		t.Fatalf("PortfolioAgeDays: %d != %d", f.PortfolioAgeDays, int(refTime.Sub(createdOld).Hours()/24))
+	}
+	if f.NewestRepoAgeDays != int(refTime.Sub(createdNew).Hours()/24) {
+		t.Fatalf("NewestRepoAgeDays: %d != %d", f.NewestRepoAgeDays, int(refTime.Sub(createdNew).Hours()/24))
+	}
+	if f.DaysSinceLatestRelease != int(refTime.Sub(released).Hours()/24) {
+		t.Fatalf("DaysSinceLatestRelease: %d != %d", f.DaysSinceLatestRelease, int(refTime.Sub(released).Hours()/24))
+	}
+	if !almostEqual(f.MeanRepoSize, 310.0/3.0) {
+		t.Fatalf("MeanRepoSize: %.4f != %.4f", f.MeanRepoSize, 310.0/3.0)
+	}
+	if !almostEqual(f.TopicBreadth, 1.0) {
+		t.Fatalf("TopicBreadth: %.4f != %.4f", f.TopicBreadth, 1.0)
+	}
+}
+
+func TestFromReposDerivedIntelligenceEmpty(t *testing.T) {
+	f := FromRepos(nil, refTime)
+
+	if f.MaxRepoStars != 0 {
+		t.Fatalf("MaxRepoStars: 0 != %d", f.MaxRepoStars)
+	}
+	if f.MeanRepoStars != 0 {
+		t.Fatalf("MeanRepoStars: 0 != %.4f", f.MeanRepoStars)
+	}
+	if f.LanguageCount != 0 {
+		t.Fatalf("LanguageCount: 0 != %d", f.LanguageCount)
+	}
+	if f.RankedLanguages != nil {
+		t.Fatalf("RankedLanguages: nil != %v", f.RankedLanguages)
+	}
+	if f.TotalReleases != 0 || f.ReleasedRepos != 0 || f.TotalPullRequests != 0 || f.TotalCollaborators != 0 || f.ProtectedBranchRepos != 0 || f.DiscussionRepos != 0 {
+		t.Fatalf("release/maintenance aggregates should be 0 for empty input")
+	}
+	if f.ForkRatio != 0 || f.LicensedRatio != 0 || f.ArchivedRatio != 0 {
+		t.Fatalf("ratio facts should be 0 for empty input")
+	}
+	if f.PortfolioAgeDays != 0 || f.NewestRepoAgeDays != 0 || f.DaysSinceLatestRelease != 0 {
+		t.Fatalf("age facts should be 0 for empty input")
+	}
+	if f.MeanRepoSize != 0 || f.TopicBreadth != 0 {
+		t.Fatalf("size/breadth facts should be 0 for empty input")
+	}
+}
+
+func TestFromReposRankedLanguagesTiebreak(t *testing.T) {
+	repos := []RepositoryVestige{
+		{Fork: false, Size: 100, LanguageDistribution: map[string]int64{"Zeta": 100, "Alpha": 100, "Beta": 200}},
+	}
+
+	f := FromRepos(repos, refTime)
+
+	want := []string{"Beta", "Alpha", "Zeta"}
+	if len(f.RankedLanguages) != len(want) {
+		t.Fatalf("RankedLanguages length: %d != %d (%v)", len(f.RankedLanguages), len(want), f.RankedLanguages)
+	}
+	for i, w := range want {
+		if f.RankedLanguages[i] != w {
+			t.Fatalf("RankedLanguages[%d]: %q != %q (full: %v)", i, f.RankedLanguages[i], w, f.RankedLanguages)
+		}
+	}
+}
+
 func TestExtractSignalsEquivalence(t *testing.T) {
 	cases := []struct {
 		name  string
