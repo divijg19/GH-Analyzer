@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/divijg19/Atlas/internal/evidence"
 	"github.com/divijg19/Atlas/internal/index"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/indicators"
 )
 
-func Explain(p index.Profile, q Query) []string {
+func explain(p index.Profile, q Query) []string {
 	if len(q.Conditions) == 0 {
 		return []string{"Ranked by overall signal strength"}
 	}
@@ -21,9 +22,9 @@ func Explain(p index.Profile, q Query) []string {
 }
 
 func explainWithEvidence(p index.Profile, q Query) []string {
-	sig := signals.FromMap(p.Signals)
+	sig := indicators.FromMap(p.Signals)
 
-	allEvidence := signals.GenerateEvidence(*p.Facts, sig)
+	allEvidence := evidence.GenerateEvidence(*p.Facts, sig)
 
 	matched := map[string]struct{}{}
 	for _, c := range q.Conditions {
@@ -31,7 +32,7 @@ func explainWithEvidence(p index.Profile, q Query) []string {
 		if _, exists := matched[signal]; exists {
 			continue
 		}
-		if Match(p, c) {
+		if match(p, c) {
 			matched[signal] = struct{}{}
 		}
 	}
@@ -58,7 +59,7 @@ func explainFromConditions(p index.Profile, q Query) []string {
 	seenSignals := map[string]struct{}{}
 
 	for _, condition := range q.Conditions {
-		if !Match(p, condition) {
+		if !match(p, condition) {
 			continue
 		}
 
@@ -82,13 +83,13 @@ func explainFromConditions(p index.Profile, q Query) []string {
 
 func reasonForSignal(signal string) string {
 	switch strings.ToLower(strings.TrimSpace(signal)) {
-	case signals.SignalConsistency:
+	case indicators.SignalConsistency:
 		return "High consistency"
-	case signals.SignalOwnership:
+	case indicators.SignalOwnership:
 		return "Strong ownership"
-	case signals.SignalDepth:
+	case indicators.SignalDepth:
 		return "Deep project work"
-	case signals.SignalActivity:
+	case indicators.SignalActivity:
 		return "Recently active"
 	default:
 		return ""

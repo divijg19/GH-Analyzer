@@ -11,18 +11,18 @@ import (
 
 	"github.com/divijg19/Atlas/internal/acquisition"
 	"github.com/divijg19/Atlas/internal/live"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/observations"
 )
 
 // mockAcquisitionClient is a test seam for the live package. It returns canned
 // data without performing network calls and satisfies the live.fetcher
 // interface.
 type mockAcquisitionClient struct {
-	repos     map[string][]signals.RepositoryVestige
+	repos     map[string][]observations.RepositoryVestige
 	usernames []string
 }
 
-func (m *mockAcquisitionClient) FetchReposNormalized(_ context.Context, username string) ([]signals.RepositoryVestige, error) {
+func (m *mockAcquisitionClient) FetchReposNormalized(_ context.Context, username string) ([]observations.RepositoryVestige, error) {
 	r, ok := m.repos[username]
 	if !ok {
 		return nil, context.Canceled
@@ -36,6 +36,10 @@ func (m *mockAcquisitionClient) FetchUser(_ context.Context, _ string) (*acquisi
 
 func (m *mockAcquisitionClient) FetchContributions(_ context.Context, _ string) (*acquisition.ContributionsDTO, error) {
 	return &acquisition.ContributionsDTO{}, nil
+}
+
+func (m *mockAcquisitionClient) FetchActivityObservations(_ context.Context, _ string) []observations.ActivityObservation {
+	return nil
 }
 
 func (m *mockAcquisitionClient) SearchRepositoryOwners(_ context.Context, _ string) ([]string, error) {
@@ -63,7 +67,7 @@ func TestBuildLiveIndexSuccess(t *testing.T) {
 	now := time.Now()
 	mock := &mockAcquisitionClient{
 		usernames: []string{"alice", "bob", "alice"},
-		repos: map[string][]signals.RepositoryVestige{
+		repos: map[string][]observations.RepositoryVestige{
 			"alice": {{Name: "alice-repo", Size: 100, UpdatedAt: now}},
 			"bob":   {{Name: "bob-repo", Size: 100, UpdatedAt: now}},
 		},
@@ -113,7 +117,7 @@ func TestBuildLiveIndexPartialFailures(t *testing.T) {
 	now := time.Now()
 	mock := &mockAcquisitionClient{
 		usernames: []string{"alice", "bob", "cara"},
-		repos: map[string][]signals.RepositoryVestige{
+		repos: map[string][]observations.RepositoryVestige{
 			"alice": {{Name: "alice-repo", Size: 100, UpdatedAt: now}},
 			"cara":  {{Name: "cara-repo", Size: 100, UpdatedAt: now}},
 		},

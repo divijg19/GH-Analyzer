@@ -1,10 +1,19 @@
+// Package presets owns named search presets consumed by the engine layer.
+//
+// It maps human-readable preset names ("strong", "consistent", "deep") to
+// predefined engine.Query values.
+//
+// Presets never acquire observations, derive facts, compute indicators,
+// evaluate candidates, or perform presentation.
+//
+// Consumed by: search, cmd/atlas.
 package presets
 
 import (
 	"fmt"
 
 	"github.com/divijg19/Atlas/internal/engine"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/indicators"
 )
 
 func Preset(name string) (engine.Query, error) {
@@ -12,20 +21,20 @@ func Preset(name string) (engine.Query, error) {
 	case "strong":
 		return engine.Query{
 			Conditions: []engine.Condition{
-				{Signal: signals.SignalConsistency, Operator: ">=", Value: 0.7},
-				{Signal: signals.SignalOwnership, Operator: ">=", Value: 0.6},
+				{Signal: indicators.SignalConsistency, Operator: ">=", Value: 0.7},
+				{Signal: indicators.SignalOwnership, Operator: ">=", Value: 0.6},
 			},
 		}, nil
 	case "consistent":
 		return engine.Query{
 			Conditions: []engine.Condition{
-				{Signal: signals.SignalConsistency, Operator: ">=", Value: 0.8},
+				{Signal: indicators.SignalConsistency, Operator: ">=", Value: 0.8},
 			},
 		}, nil
 	case "deep":
 		return engine.Query{
 			Conditions: []engine.Condition{
-				{Signal: signals.SignalDepth, Operator: ">=", Value: 0.7},
+				{Signal: indicators.SignalDepth, Operator: ">=", Value: 0.7},
 			},
 		}, nil
 	default:

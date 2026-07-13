@@ -3,7 +3,7 @@
 This document is the canonical reference for the Atlas Intelligence Ontology.
 It defines every concept Atlas understands, following one guiding principle:
 
-> **Atlas observes Vestiges. Atlas derives Facts. Atlas measures Indicators. Atlas performs Evaluation. Atlas projects Intelligence.**
+> **Atlas observes Observations. Atlas derives Facts. Atlas measures Indicators. Atlas performs Evaluation. Atlas projects Intelligence.**
 
 Where `ARCHITECTURE.md` answers *"which package owns this?"*, this document
 answers *"what is the concept?"* and *"what are its invariants?"*
@@ -27,13 +27,13 @@ Acquisition
     ↓
 Normalization
     ↓
-Vestiges
+    Observations
     ↓
-Facts
+    Facts
     ↓
-Signals
+    Indicators
     ↓
-Profile
+    Profile
     ↓
 Evaluation
     ↓
@@ -81,21 +81,21 @@ Consumers
 | **Purpose** | Maps DTOs to domain vestiges. The boundary between "what GitHub returns" and "what Atlas knows." |
 | **Owner** | `internal/acquisition` |
 | **Inputs** | `RepoDTO` (REST), `graphQLRepo` (GraphQL), `UserDTO`, `ContributionsDTO`. |
-| **Outputs** | `signals.RepositoryVestige` (full from REST, partial from GraphQL), `profile.UserMetadata`, `contributions.Summary`. |
+| **Outputs** | `observations.RepositoryVestige` (full from REST, partial from GraphQL), `profile.UserMetadata`, `contributions.Summary`. |
 | **Invariants** | One-to-one: one DTO → one vestige. No aggregation, no derivation, no omitting fields without documentation. Both REST and GraphQL DTOs pass through normalization. |
 | **Prohibited** | Aggregation, scoring, evaluation, filtering, merge of multiple acquisition sources. |
 
 ---
 
-### Vestiges — `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`
+### Observations
 
 | Attribute | Definition |
 |-----------|------------|
 | **Purpose** | The canonical raw observation of a software development artifact. Every acquisition backend (REST, GraphQL, GitFut, local git) produces vestiges; Atlas never acquires from them directly. |
-| **Owner** | Current: `internal/signals` (type), `internal/profile` (metadata), `internal/contributions` (summary). |
+| **Owner** | `internal/observations` (repository and activity observations), `internal/profile` (metadata), `internal/contributions` (summary). |
 | **Inputs** | Normalized output from acquisition. |
-| **Outputs** | `signals.RepositoryVestige`, `profile.UserMetadata`, `contributions.Summary`. |
-| **Invariants** | Vestiges are observables, not computations. Fields are organized into observation domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure. |
+| **Outputs** | `observations.RepositoryVestige`, `observations.ActivityObservation`, `profile.UserMetadata`, `contributions.Summary`. |
+| **Invariants** | Vestiges are observables, not computations. Fields are organized into observation domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure. ActivityObservation captures temporal developer activity. |
 | **Prohibited** | Derivation, aggregation, scoring, evaluation. |
 
 **Observation domains of `RepositoryVestige`:**
@@ -107,48 +107,57 @@ Consumers
 - **Maintenance** — OpenIssues, Stars, Forks, Watchers, PullRequestCount
 - **Structure** — Size, DiscussionEnabled
 
+**`ActivityObservation` kinds** (v0.8.17):
+
+- **Commit** — commit contributions within a time window
+- **PullRequest** — PR contributions within a time window
+- **Review** — code review contributions within a time window
+- **Issue** — issue contributions within a time window
+- **Discussion** — discussion contributions (deferred)
+- **Release** — release contributions (deferred)
+- **ActiveDay** — calendar activity metric
+- **ContributionByRepo** — per-repository contribution breakdown
+- **Aggregate** — lifetime/private contribution sums
+
 **Future vestige families** (documented placeholders, no implementation):
 
-- `CommitVestige`
-- `PullRequestVestige`
-- `ReviewVestige`
-- `ReleaseVestige`
+- `CommitVestige` (individual commits)
+- `PullRequestVestige` (individual PRs)
+- `ReviewVestige` (individual reviews)
+- `ReleaseVestige` (individual releases)
 - `ContributorVestige`
 - `OrganizationVestige`
 
 ---
 
-### Facts — `signals.RepositoryFacts`
+### Facts — `facts.RepositoryFacts`, `facts.ActivityFacts`
 
 | Attribute | Definition |
 |-----------|------------|
 | **Purpose** | Deterministic, evidence-backed aggregates computed from vestiges. Facts answer *"what do we know?"* without interpretation. |
-| **Owner** | Current: `internal/signals`. |
-| **Inputs** | `[]signals.RepositoryVestige`. |
-| **Outputs** | `signals.RepositoryFacts`. |
+| **Owner** | `internal/facts`. |
+| **Inputs** | `[]observations.RepositoryVestige`. |
+| **Outputs** | `facts.RepositoryFacts`. |
 | **Invariants** | Purely derivable from vestiges: given the same vestiges, identical facts. Never fetch, never observe, never evaluate. |
 | **Prohibited** | Observation (I/O), scoring, evaluation, confidence. |
 
-**Fact families** (current and documented placeholders):
+**Fact families**:
 
 | Fact Family | Status | Fields |
 |-------------|--------|--------|
 | `RepositoryFacts` | ✅ Implemented | TotalRepos, OriginalRepos, ForkRepos, RecentRepos, DeepRepos, ValidRepos, ValidOriginalRepos, LargestRepoSize, LatestActivity, ArchivedRepos, TemplateRepos, PublicRepos, PrivateRepos, LicensedRepos, TotalStars, TotalForks, TotalWatchers, TotalOpenIssues, TotalTopics, OldestCreated, NewestCreated, MaxRepoStars, MeanRepoStars, LanguageCount, RankedLanguages, TotalReleases, LatestReleaseAt, ReleasedRepos, TotalPullRequests, TotalCollaborators, ProtectedBranchRepos, DiscussionRepos, ForkRatio, LicensedRatio, ArchivedRatio, PortfolioAgeDays, NewestRepoAgeDays, DaysSinceLatestRelease, MeanRepoSize, TopicBreadth |
-| `ContributionFacts` | 📝 Placeholder | (no fields yet) |
-| `TechnologyFacts` | 📝 Placeholder | (no fields yet) |
-| `BehaviourFacts` | 📝 Placeholder | (no fields yet) |
-| `CollaborationFacts` | 📝 Placeholder | (no fields yet) |
+| `ActivityFacts` | ✅ Implemented (v0.8.17) | RecentCommits, RecentPullRequests, RecentReviews, RecentIssues, RecentPrivate, LifetimeCommits, LifetimePullRequests, LifetimeReviews, LifetimeIssues, LifetimePrivate, LifetimeTotal, ContributionBreadth, RepositoryBreadth, ActiveDays, ActivityCadence, ContributionFrequency, RepositoryDepth, YearCount, CommitCadence, ContributionRecency |
 
 ---
 
-### Signals — `signals.Signals`, `signals.RawScore`
+### Indicators — `indicators.Signals`, `indicators.RawScore`
 
 | Attribute | Definition |
 |-----------|------------|
 | **Purpose** | Normalized measurements derived from facts. Signals quantify observations: ownership, consistency, depth, activity. |
-| **Owner** | Current: `internal/signals`. |
-| **Inputs** | `signals.RepositoryFacts`. |
-| **Outputs** | `signals.Signals` (four float64 values in [0, 1]), `signals.RawScore` (three component integer scores in [0, 100]). |
+| **Owner** | `internal/indicators`. |
+| **Inputs** | `facts.RepositoryFacts`. |
+| **Outputs** | `indicators.Signals` (four float64 values in [0, 1]), `indicators.RawScore` (three component integer scores in [0, 100]). |
 | **Invariants** | Deterministic, reproducible, bounded [0,1], explainable, fact-derived. Signals measure facts — they never observe vestiges directly. |
 | **Prohibited** | I/O, aggregation, scoring beyond measurement, confidence, ranking. |
 
@@ -169,7 +178,7 @@ Signals must satisfy:
 - **Reproducible** — independent computation yields identical results
 - **Bounded** — always in [0, 1]
 - **Explainable** — every value traces to specific facts
-- **Fact-derived** — signals never read vestiges directly
+- **Fact-derived** — indicators never read observations directly
 
 Signals are **not**:
 
@@ -185,9 +194,9 @@ Signals are **not**:
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Atlas' complete assembled understanding of a candidate. Profile is context — not intelligence. It aggregates facts, indicators, metadata, and contributions into a single canonical record. |
+| **Purpose** | Atlas' complete assembled understanding of a candidate. Profile is context — not intelligence. It aggregates repository facts, activity facts, indicators, metadata, and contributions into a single canonical record. |
 | **Owner** | `internal/index`. |
-| **Inputs** | `signals.RepositoryFacts`, `signals.Signals`, `profile.UserMetadata`, `contributions.Summary`. |
+| **Inputs** | `facts.RepositoryFacts`, `facts.ActivityFacts`, `indicators.Signals`, `profile.UserMetadata`, `contributions.Summary`. |
 | **Outputs** | `index.Profile` (the assembled candidate state before evaluation). |
 | **Invariants** | Profile is assembled, not interpreted. It is the single source of truth for what Atlas knows about a candidate before evaluation. |
 | **Prohibited** | Scoring, confidence, ranking, presentation, persistence concerns. |
@@ -211,7 +220,7 @@ Profile is not:
 |-----------|------------|
 | **Purpose** | Score interpretation, confidence classification, penalty application, and ranking policy. Evaluation owns the transition from "what we know" to "how to interpret it." |
 | **Owner** | `internal/evaluation`. |
-| **Inputs** | `signals.RawScore`, repository count, `index.Profile.Signals`. |
+| **Inputs** | `indicators.RawScore`, repository count, `index.Profile.Signals`. |
 | **Outputs** | `int` (overall score 0–100), `evaluation.RankingPolicy.Score`, confidence classification. |
 | **Invariants** | Never observes, never measures, never aggregates. Only interprets. |
 | **Prohibited** | I/O, vestige observation, fact derivation, indicator measurement, presentation. |
@@ -273,10 +282,10 @@ vestiges, facts, and eventually indicators. No implementation exists beyond
 | Domain | Vestige Families | Fact Families | Signal Families | Status |
 |--------|-----------------|---------------|-------------------|--------|
 | **Repository** | `RepositoryVestige` | `RepositoryFacts` | Ownership, Consistency, Depth, Activity | ✅ Active |
-| **Contribution** | *(future)* | `ContributionFacts` | *(future)* | 📝 Documented |
-| **Technology** | *(future)* | `TechnologyFacts` | *(future)* | 📝 Documented |
-| **Behaviour** | *(future)* | `BehaviourFacts` | *(future)* | 📝 Documented |
-| **Collaboration** | *(future)* | `CollaborationFacts` | *(future)* | 📝 Documented |
+| **Activity** | `ActivityObservation` | `ActivityFacts` | *(future)* | ✅ Active (v0.8.17) |
+| **Technology** | *(future)* | *(future)* | *(future)* | 📝 Documented |
+| **Behaviour** | *(future)* | *(future)* | *(future)* | 📝 Documented |
+| **Collaboration** | *(future)* | *(future)* | *(future)* | 📝 Documented |
 | **Career** | *(future)* | *(future)* | *(future)* | 📝 Documented |
 
 ---
@@ -308,56 +317,35 @@ Every stage of the intelligence model is governed by the same principles:
 ## Determinism Note
 
 All derived computations accept an explicit `referenceTime` parameter. The
-`activity` signal is deterministic given the same reference time, removing
-any hidden dependency on the system clock. See `FromRepos`, `ExtractSignals`,
-and `ExtractSignalsFromFacts` in `internal/signals`.
+`activity` indicator is deterministic given the same reference time, removing
+any hidden dependency on the system clock. See `facts.FromRepos`,
+`indicators.ExtractSignals`, and `indicators.ExtractSignalsFromFacts`.
 
 ---
 
-## Intelligence Roadmap
+## Historical Evolution
+
+Legacy terminology (e.g. `signals.*` as an umbrella package, "Signal Expansion"
+as a roadmap milestone) may appear below for historical accuracy but does not
+reflect the current frozen architecture.
+
+### Roadmap (archival)
 
 | Version | Theme | Scope |
 |---------|-------|-------|
 | **v0.8.14** | Intelligence Ontology | Vocabulary freeze, RepositoryVestige, RepositoryFacts, documentation, certification |
-| **v0.8.15** | Deterministic Observation Acquisition | Observation specification (OBSERVATION_SPECIFICATION.md), GitHub GraphQL acquisition, deterministic merge, expanded RepositoryVestige with 8 Tier 1 fields |
-| **v0.8.16** | Repository & Technology Facts | Expanded RepositoryVestige, RepositoryFacts enrichment, TechnologyFacts implementation |
-| **v0.8.17** | Behaviour & Collaboration Facts | ContributionVestige, BehaviourFacts, CollaborationFacts |
-| **v0.8.18** | Signal Expansion | New signals for behaviour, collaboration, technology breadth |
-| **v0.9.0** | Candidate Intelligence Engine | All intelligence converges; projection consumes Intelligence, not Profile; Lattice readiness |
+| **v0.8.15** | Deterministic Observation Acquisition | Observation specification, GitHub GraphQL acquisition, deterministic merge, expanded RepositoryVestige |
+| **v0.8.16** | Repository Facts | Expanded RepositoryFacts with deterministic derivations |
+| **v0.8.17** | Activity Intelligence | ActivityObservation model, ActivityFacts, Profile integration |
+| **v0.9.0+** | Candidate Intelligence | All intelligence domains converge toward candidate assessment |
 
----
+### Release history (archival)
 
-## Historical Notes
-
-- **v0.8.13 (Phase 1)** — rebranded GH-Analyzer → Atlas; module path
-  `github.com/divijg19/Atlas`; removed the legacy `cmd/gha` and
-  `internal/ghanalyzer` packages.
-- **v0.8.13 (Phase 6)** — consolidated Evaluation: ranking weights, overall
-  score, and small-sample penalty moved into `internal/evaluation`
-  (`scoring.go`). `internal/engine/ranking.go` now defines only the
-  `RankingStrategy` interface; projection and engine consume
-  `evaluation.RankingPolicy`.
-- **v0.8.13 (Phase 9)** — Repository Intelligence Foundation. Enriched
-  `RepoDTO`, `RepositoryVestige`, and `RepositoryFacts` with
-  repository metadata (visibility, archived, template, license, topics, stars,
-  forks, watchers, open issues, created/pushed dates, default branch). **No new
-  signals were introduced** — only observations and deterministic facts.
-- **v0.8.14** — Intelligence Ontology release. Established the canonical
-  vocabulary, layer definitions with invariants, observation domains,
-  intelligence domains, and frozen roadmap. Renamed `Repo` → `RepositoryVestige`
-  and `Facts` → `RepositoryFacts`. Introduced documented placeholder types for
-  future fact families.
-- **v0.8.15** — Deterministic Observation Acquisition release. Established
-  `OBSERVATION_SPECIFICATION.md` as the normative source for observation
-  ownership and merge policy. Added GitHub GraphQL acquisition (executor,
-  queries, DTOs). Extended normalization with `normalizeGraphQLRepo`. Added
-  specification-driven merge (`mergeVestiges` in `merge.go`). Enriched
-  `RepositoryVestige` with 8 GraphQL-authoritative fields across all six
-  observation domains. No downstream layers were modified.
-- **v0.8.16** — Repository Intelligence release. Established
-  `REPOSITORY_INTELLIGENCE.md` as the normative source for derived
-  `RepositoryFacts`. Expanded `RepositoryFacts` with flat deterministic facts
-  (star distribution, technology breadth, release/maintenance aggregates, ratio
-  facts, freshness/age) computed solely from existing `RepositoryVestige`
-  fields. No new observations, no new signals, no new layers. Informed by a
-  GitFut research audit (excluded under `research/gitfut/`).
+- **v0.8.13** — Rebranded GH-Analyzer → Atlas; consolidated Evaluation.
+- **v0.8.14** — Intelligence Ontology release. Canonical vocabulary,
+  layer definitions, observation domains.
+- **v0.8.15** — Deterministic Observation Acquisition release. GraphQL,
+  deterministic merge.
+- **v0.8.16** — Repository Intelligence release. Expanded Facts.
+- **v0.8.17** — Activity Intelligence release. ActivityObservation,
+  ActivityFacts, Profile integration.

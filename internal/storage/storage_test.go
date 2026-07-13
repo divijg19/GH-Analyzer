@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/divijg19/Atlas/internal/contributions"
+	"github.com/divijg19/Atlas/internal/facts"
 	"github.com/divijg19/Atlas/internal/index"
 	"github.com/divijg19/Atlas/internal/profile"
-	"github.com/divijg19/Atlas/internal/signals"
 )
 
 func TestSaveLoadRoundTrip(t *testing.T) {
@@ -23,7 +23,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		{
 			Username: "alice",
 			Signals:  map[string]float64{"consistency": 0.8, "ownership": 0.7, "depth": 0.6, "activity": 0.9},
-			Facts: &signals.RepositoryFacts{
+			Facts: &facts.RepositoryFacts{
 				TotalRepos:         42,
 				OriginalRepos:      38,
 				ForkRepos:          4,

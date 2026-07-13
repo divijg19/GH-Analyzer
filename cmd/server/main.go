@@ -107,7 +107,7 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repos := acquisition.NormalizeRepos(repoDTOs)
-	proj, err := projection.BuildAnalyzeProjection(username, repos)
+	proj, err := projection.BuildAnalyzeProjection(username, repos, time.Now())
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to build analysis")
 		return

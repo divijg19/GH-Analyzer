@@ -2,9 +2,11 @@ package projection
 
 import (
 	"github.com/divijg19/Atlas/internal/contributions"
+	"github.com/divijg19/Atlas/internal/evidence"
+	"github.com/divijg19/Atlas/internal/facts"
 	"github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/indicators"
 	"github.com/divijg19/Atlas/internal/profile"
-	"github.com/divijg19/Atlas/internal/signals"
 )
 
 // InspectProjection provides a raw data view for inspection and debugging.
@@ -12,20 +14,21 @@ import (
 type InspectProjection struct {
 	Username      string                   `json:"username"`
 	Metadata      *profile.UserMetadata    `json:"metadata,omitempty"`
-	Facts         *signals.RepositoryFacts `json:"facts,omitempty"`
+	Facts         *facts.RepositoryFacts   `json:"facts,omitempty"`
 	Signals       map[string]float64       `json:"signals"`
 	Contributions *contributions.Summary   `json:"contributions,omitempty"`
-	Evidence      []signals.EvidenceGroup  `json:"evidence"`
+	ActivityFacts *facts.ActivityFacts     `json:"activity_facts,omitempty"`
+	Evidence      []evidence.EvidenceGroup `json:"evidence"`
 }
 
 // BuildInspectProjection creates a raw data view from a Profile.
-// Generates evidence from facts and signals if available.
+// Generates evidence from facts and indicators if available.
 func BuildInspectProjection(p index.Profile) InspectProjection {
-	var evidence []signals.EvidenceGroup
+	var groupedEvidence []evidence.EvidenceGroup
 
 	if p.Facts != nil {
-		sig := signals.FromMap(p.Signals)
-		evidence = signals.GenerateEvidence(*p.Facts, sig)
+		sig := indicators.FromMap(p.Signals)
+		groupedEvidence = evidence.GenerateEvidence(*p.Facts, sig)
 	}
 
 	return InspectProjection{
@@ -34,6 +37,7 @@ func BuildInspectProjection(p index.Profile) InspectProjection {
 		Facts:         p.Facts,
 		Signals:       p.Signals,
 		Contributions: p.Contributions,
-		Evidence:      evidence,
+		ActivityFacts: p.ActivityFacts,
+		Evidence:      groupedEvidence,
 	}
 }

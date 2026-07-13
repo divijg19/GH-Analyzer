@@ -4,18 +4,18 @@ import (
 	"time"
 
 	"github.com/divijg19/Atlas/internal/contributions"
+	obs "github.com/divijg19/Atlas/internal/observations"
 	"github.com/divijg19/Atlas/internal/profile"
-	"github.com/divijg19/Atlas/internal/signals"
 )
 
 // normalizeRepo maps a GitHub repository DTO to the domain repository model.
-func normalizeRepo(dto RepoDTO) signals.RepositoryVestige {
+func normalizeRepo(dto RepoDTO) obs.RepositoryVestige {
 	license := ""
 	if dto.License != nil {
 		license = dto.License.Key
 	}
 
-	return signals.RepositoryVestige{
+	return obs.RepositoryVestige{
 		Name:          dto.Name,
 		Fork:          dto.Fork,
 		Size:          dto.Size,
@@ -36,8 +36,8 @@ func normalizeRepo(dto RepoDTO) signals.RepositoryVestige {
 }
 
 // NormalizeRepos maps a slice of repository DTOs to domain repositories.
-func NormalizeRepos(dtos []RepoDTO) []signals.RepositoryVestige {
-	repos := make([]signals.RepositoryVestige, len(dtos))
+func NormalizeRepos(dtos []RepoDTO) []obs.RepositoryVestige {
+	repos := make([]obs.RepositoryVestige, len(dtos))
 	for i, dto := range dtos {
 		repos[i] = normalizeRepo(dto)
 	}
@@ -81,12 +81,12 @@ func NormalizeContributions(dto *ContributionsDTO) *contributions.Summary {
 //
 // Only fields documented as GraphQL-authoritative in
 // OBSERVATION_SPECIFICATION.md are populated.
-func normalizeGraphQLRepo(repo *graphQLRepo) signals.RepositoryVestige {
+func normalizeGraphQLRepo(repo *graphQLRepo) obs.RepositoryVestige {
 	if repo == nil {
-		return signals.RepositoryVestige{}
+		return obs.RepositoryVestige{}
 	}
 
-	var partial signals.RepositoryVestige
+	var partial obs.RepositoryVestige
 
 	if repo.Languages != nil {
 		dist := make(map[string]int64, len(repo.Languages.Edges))

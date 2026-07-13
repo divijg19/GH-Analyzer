@@ -14,8 +14,8 @@ const (
 	maxUsers       = 20
 )
 
-// RepoSearchDTO mirrors the GitHub repository search API response.
-type RepoSearchDTO struct {
+// repoSearchDTO mirrors the GitHub repository search API response.
+type repoSearchDTO struct {
 	Items []struct {
 		Owner struct {
 			Login string `json:"login"`
@@ -42,7 +42,7 @@ func (c *Client) SearchRepositoryOwners(ctx context.Context, query string) ([]st
 		return nil, fmt.Errorf("failed to fetch GitHub data")
 	}
 
-	var payload RepoSearchDTO
+	var payload repoSearchDTO
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub data")
 	}

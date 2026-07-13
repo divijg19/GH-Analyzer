@@ -1,42 +1,28 @@
-// Package engine implements the Engine layer of the Atlas Intelligence
-// Ontology (see docs/INTELLIGENCE.md). It owns search query execution,
-// candidate filtering, matching, and ordering. It never acquires, evaluates,
-// or presents — it only computes ranked results from an index.
-//
-// It owns query parsing, candidate filtering, condition matching, and result
-// ordering via RankingStrategy. It never interprets scores or confidence
-// (internal/evaluation) and never renders output (internal/projection).
-// See docs/INTELLIGENCE.md.
 package engine
 
 import (
 	"math"
 	"sort"
 
-	"github.com/divijg19/Atlas/internal/evaluation"
 	"github.com/divijg19/Atlas/internal/index"
 )
 
 const minCalibrationDatasetSize = 10
 
-type Distribution struct {
+type distribution struct {
 	Overall []float64
 }
 
-func BuildDistribution(profiles []index.Profile, ranking RankingStrategy) Distribution {
-	if ranking == nil {
-		ranking = evaluation.RankingPolicy{}
-	}
-
+func buildDistribution(profiles []index.Profile, ranking rankingStrategy) distribution {
 	overall := make([]float64, 0, len(profiles))
 	for _, profile := range profiles {
-		overall = append(overall, ranking.Score(profile))
+		overall = append(overall, ranking.Score(profile.Signals))
 	}
 
 	sortedOverall := append([]float64(nil), overall...)
 	sort.Float64s(sortedOverall)
 
-	return Distribution{Overall: sortedOverall}
+	return distribution{Overall: sortedOverall}
 }
 
 func percentile(sorted []float64, value float64) float64 {
@@ -59,7 +45,7 @@ func percentile(sorted []float64, value float64) float64 {
 	return clamp01(float64(count) / float64(len(sorted)))
 }
 
-func CalibrateScore(distribution Distribution, rawScore float64) float64 {
+func calibrateScore(distribution distribution, rawScore float64) float64 {
 	if len(distribution.Overall) < minCalibrationDatasetSize {
 		return rawScore
 	}

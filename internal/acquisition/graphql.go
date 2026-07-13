@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/divijg19/Atlas/internal/github"
-	"github.com/divijg19/Atlas/internal/signals"
+	obs "github.com/divijg19/Atlas/internal/observations"
 )
 
 // queryRepo executes a single GraphQL repository query and returns the DTO.
@@ -71,8 +71,8 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 // fetchGraphQLVestiges does NOT merge with REST data. It is the GraphQL
 // executor only: query → DTO → normalize. Merging is the responsibility of
 // mergeVestiges in merge.go.
-func (c *Client) fetchGraphQLVestiges(ctx context.Context, owner string, repos []signals.RepositoryVestige) []signals.RepositoryVestige {
-	partials := make([]signals.RepositoryVestige, len(repos))
+func (c *Client) fetchGraphQLVestiges(ctx context.Context, owner string, repos []obs.RepositoryVestige) []obs.RepositoryVestige {
+	partials := make([]obs.RepositoryVestige, len(repos))
 
 	for i, v := range repos {
 		if v.Name == "" {
@@ -101,7 +101,7 @@ func (c *Client) fetchGraphQLVestiges(ctx context.Context, owner string, repos [
 //
 // GraphQL enrichment is additive. When GraphQL is unavailable, REST-only
 // vestiges are returned with enriched fields at their documented defaults.
-func (c *Client) FetchReposEnriched(ctx context.Context, username string) ([]signals.RepositoryVestige, error) {
+func (c *Client) FetchReposEnriched(ctx context.Context, username string) ([]obs.RepositoryVestige, error) {
 	base, err := c.FetchReposNormalized(ctx, username)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (c *Client) FetchReposEnriched(ctx context.Context, username string) ([]sig
 
 	enriched := c.fetchGraphQLVestiges(ctx, username, base)
 
-	result := make([]signals.RepositoryVestige, len(base))
+	result := make([]obs.RepositoryVestige, len(base))
 	for i := range base {
 		result[i] = mergeVestiges(base[i], enriched[i])
 	}

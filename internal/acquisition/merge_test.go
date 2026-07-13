@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/divijg19/Atlas/internal/signals"
+	obs "github.com/divijg19/Atlas/internal/observations"
 )
 
 func TestMergeVestiges(t *testing.T) {
-	base := signals.RepositoryVestige{
+	base := obs.RepositoryVestige{
 		Name:  "test-repo",
 		Stars: 100,
 		Forks: 20,
 	}
 
-	enrichment := signals.RepositoryVestige{
+	enrichment := obs.RepositoryVestige{
 		LanguageDistribution:   map[string]int64{"Rust": 30000},
 		ReleaseCount:           5,
 		PullRequestCount:       30,
@@ -62,7 +62,7 @@ func TestMergeVestiges(t *testing.T) {
 }
 
 func TestMergeVestigesEmptyEnrichment(t *testing.T) {
-	base := signals.RepositoryVestige{
+	base := obs.RepositoryVestige{
 		Name:  "test-repo",
 		Stars: 100,
 	}
@@ -70,7 +70,7 @@ func TestMergeVestigesEmptyEnrichment(t *testing.T) {
 	// Zero-valued enrichment — no GraphQL data observed.
 	// GraphQL-authoritative fields should be explicitly set to their
 	// Go zero values, representing "not yet observed".
-	enrichment := signals.RepositoryVestige{}
+	enrichment := obs.RepositoryVestige{}
 
 	result := mergeVestiges(base, enrichment)
 
@@ -105,12 +105,12 @@ func TestMergeVestigesEmptyEnrichment(t *testing.T) {
 }
 
 func TestMergeVestigesReplacesPreviousEnrichment(t *testing.T) {
-	base := signals.RepositoryVestige{
+	base := obs.RepositoryVestige{
 		Name:  "existing",
 		Stars: 50,
 	}
 
-	enrichment := signals.RepositoryVestige{
+	enrichment := obs.RepositoryVestige{
 		LanguageDistribution: map[string]int64{"Go": 20000},
 		ReleaseCount:         7,
 		LatestReleaseAt:      time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC),
@@ -136,7 +136,7 @@ func TestMergeVestigesReplacesPreviousEnrichment(t *testing.T) {
 }
 
 func TestMergeVestigesOverwritesEnrichedFields(t *testing.T) {
-	base := signals.RepositoryVestige{
+	base := obs.RepositoryVestige{
 		Name:                 "replace-test",
 		Stars:                50,
 		LanguageDistribution: map[string]int64{"Python": 10000},
@@ -144,7 +144,7 @@ func TestMergeVestigesOverwritesEnrichedFields(t *testing.T) {
 		LatestReleaseAt:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	enrichment := signals.RepositoryVestige{
+	enrichment := obs.RepositoryVestige{
 		LanguageDistribution: map[string]int64{"Go": 20000},
 		ReleaseCount:         7,
 		LatestReleaseAt:      time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC),

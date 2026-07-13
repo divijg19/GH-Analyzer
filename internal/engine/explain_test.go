@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/divijg19/Atlas/internal/facts"
 	"github.com/divijg19/Atlas/internal/index"
-	"github.com/divijg19/Atlas/internal/signals"
 )
 
 func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
@@ -20,7 +20,7 @@ func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
 		{Signal: "ownership", Operator: ">=", Value: 0.6},
 	}}
 
-	reasons := Explain(profile, query)
+	reasons := explain(profile, query)
 	if len(reasons) != 2 {
 		t.Fatalf("expected 2 reasons, got %d", len(reasons))
 	}
@@ -34,7 +34,7 @@ func TestExplainIncludesValuesAndDeduplicates(t *testing.T) {
 }
 
 func TestExplainNoConditions(t *testing.T) {
-	reasons := Explain(index.Profile{}, Query{})
+	reasons := explain(index.Profile{}, Query{})
 	if len(reasons) != 1 {
 		t.Fatalf("expected 1 reason, got %d", len(reasons))
 	}
@@ -45,7 +45,7 @@ func TestExplainNoConditions(t *testing.T) {
 
 func TestExplainWithEvidence(t *testing.T) {
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
-	facts := &signals.RepositoryFacts{
+	facts := &facts.RepositoryFacts{
 		OriginalRepos:      38,
 		RecentRepos:        35,
 		DeepRepos:          12,
@@ -69,7 +69,7 @@ func TestExplainWithEvidence(t *testing.T) {
 		{Signal: "consistency", Operator: ">=", Value: 0.7},
 	}}
 
-	reasons := Explain(profile, query)
+	reasons := explain(profile, query)
 
 	if len(reasons) == 0 {
 		t.Fatal("expected reasons, got none")
@@ -111,7 +111,7 @@ func TestExplainWithEvidence(t *testing.T) {
 
 func TestExplainWithEvidenceOnlyMatchedSignals(t *testing.T) {
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
-	facts := &signals.RepositoryFacts{
+	facts := &facts.RepositoryFacts{
 		OriginalRepos:      38,
 		RecentRepos:        35,
 		DeepRepos:          12,
@@ -134,7 +134,7 @@ func TestExplainWithEvidenceOnlyMatchedSignals(t *testing.T) {
 		{Signal: "ownership", Operator: ">=", Value: 0.6},
 	}}
 
-	reasons := Explain(profile, query)
+	reasons := explain(profile, query)
 
 	for _, r := range reasons {
 		if r == "35 of 38 original repos active in last 90 days" {
@@ -173,7 +173,7 @@ func TestExplainBackwardCompatibleWithoutFacts(t *testing.T) {
 		{Signal: "consistency", Operator: ">=", Value: 0.7},
 	}}
 
-	reasons := Explain(profile, query)
+	reasons := explain(profile, query)
 
 	if len(reasons) != 1 {
 		t.Fatalf("expected 1 reason, got %d", len(reasons))

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/divijg19/Atlas/internal/acquisition"
 	indexpkg "github.com/divijg19/Atlas/internal/index"
 	"github.com/divijg19/Atlas/internal/storage"
 )
@@ -36,9 +37,14 @@ func runBuild(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	indexData, err := indexpkg.Build(ctx, usernames)
-	if err != nil {
-		return err
+	client := acquisition.NewClient()
+	indexData := indexpkg.Index{Profiles: make([]indexpkg.Profile, 0, len(usernames))}
+	for _, username := range usernames {
+		profile, err := indexpkg.BuildProfile(ctx, client, username, time.Now())
+		if err != nil {
+			return err
+		}
+		indexData.Add(profile)
 	}
 
 	fmt.Printf("Built index with %d profiles\n", len(indexData.All()))

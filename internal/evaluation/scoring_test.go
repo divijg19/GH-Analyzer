@@ -3,39 +3,38 @@ package evaluation
 import (
 	"testing"
 
-	"github.com/divijg19/Atlas/internal/index"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/indicators"
 )
 
 func TestOverallScore(t *testing.T) {
 	cases := []struct {
 		name string
-		rs   signals.RawScore
+		rs   indicators.RawScore
 		want int
 	}{
 		{
 			name: "all max",
-			rs:   signals.RawScore{Consistency: 100, Ownership: 100, Depth: 100},
+			rs:   indicators.RawScore{Consistency: 100, Ownership: 100, Depth: 100},
 			want: 100,
 		},
 		{
 			name: "consistency only",
-			rs:   signals.RawScore{Consistency: 100, Ownership: 0, Depth: 0},
+			rs:   indicators.RawScore{Consistency: 100, Ownership: 0, Depth: 0},
 			want: 40,
 		},
 		{
 			name: "uniform half",
-			rs:   signals.RawScore{Consistency: 50, Ownership: 50, Depth: 50},
+			rs:   indicators.RawScore{Consistency: 50, Ownership: 50, Depth: 50},
 			want: 50,
 		},
 		{
 			name: "zero",
-			rs:   signals.RawScore{Consistency: 0, Ownership: 0, Depth: 0},
+			rs:   indicators.RawScore{Consistency: 0, Ownership: 0, Depth: 0},
 			want: 0,
 		},
 		{
 			name: "truncates fractional component",
-			rs:   signals.RawScore{Consistency: 33, Ownership: 33, Depth: 33},
+			rs:   indicators.RawScore{Consistency: 33, Ownership: 33, Depth: 33},
 			// 33*0.4 + 33*0.3 + 33*0.3 = 13.2 + 9.9 + 9.9 = 33.0
 			want: 33,
 		},
@@ -52,14 +51,14 @@ func TestOverallScore(t *testing.T) {
 }
 
 func TestRankingPolicyScore(t *testing.T) {
-	p := index.Profile{Signals: map[string]float64{
+	signals := map[string]float64{
 		"consistency": 1.0,
 		"ownership":   1.0,
 		"depth":       1.0,
-	}}
+	}
 
-	// Default weights sum to 1.0 for fully-saturated signals.
-	if got := (RankingPolicy{}).Score(p); got != 1.0 {
+	// Default weights sum to 1.0 for fully-saturated indicator values.
+	if got := (RankingPolicy{}).Score(signals); got != 1.0 {
 		t.Fatalf("default RankingPolicy.Score = %v, want 1.0", got)
 	}
 
@@ -69,12 +68,12 @@ func TestRankingPolicyScore(t *testing.T) {
 		"ownership":   0.0,
 		"depth":       0.0,
 	}}
-	if got := custom.Score(p); got != 1.0 {
+	if got := custom.Score(signals); got != 1.0 {
 		t.Fatalf("custom RankingPolicy.Score = %v, want 1.0", got)
 	}
 
 	// Missing signal keys contribute nothing.
-	sparse := index.Profile{Signals: map[string]float64{"depth": 0.5}}
+	sparse := map[string]float64{"depth": 0.5}
 	if got := (RankingPolicy{}).Score(sparse); got != 0.5*depthWeight {
 		t.Fatalf("sparse RankingPolicy.Score = %v, want %v", got, 0.5*depthWeight)
 	}

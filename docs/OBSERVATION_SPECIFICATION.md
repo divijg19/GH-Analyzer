@@ -36,7 +36,7 @@ single canonical behaviour. The code implements that behaviour.
 
 Atlas acquires observations. It does **not** acquire REST responses. It does
 **not** acquire GraphQL responses. Protocols exist only to acquire
-observations. `RepositoryVestige` is the architectural boundary.
+observations. `observations.RepositoryVestige` is the architectural boundary.
 
 ### Atlas Owns Observations
 
@@ -46,9 +46,9 @@ new acquisition mappings rather than ontology changes.
 
 ### RepositoryVestige = Current Understanding
 
-`RepositoryVestige` represents **every observation Atlas currently
-understands**. It does not mirror provider schemas. Growth is deliberate:
-every new observation must justify its existence.
+`observations.RepositoryVestige` represents **every repository observation
+Atlas currently understands**. It does not mirror provider schemas. Growth is
+deliberate: every new observation must justify its existence.
 
 ### Determinism
 
@@ -208,17 +208,14 @@ hold before v0.8.15 is certified:
 
 ## Out of Scope (Frozen Layers)
 
-The following layers are deliberately untouched in v0.8.15. Their owners are
-documented in `INTELLIGENCE.md` and `ARCHITECTURE.md`; respecting them is part
-of the release discipline.
+The following layers remain frozen for the v0.8.17 architectural baseline.
+Their canonical packages are documented in `INTELLIGENCE.md` and
+`ARCHITECTURE.md`; respecting them is part of the release discipline.
 
-- `RepositoryFacts` — no new fact families
-- `Signals` / `Indicators` — frozen
-- `Evaluation` — frozen
-- `Engine` / `Search` / `Ranking` — frozen
-- `Profile` — frozen
-- `Projection` — frozen
+- `facts.RepositoryFacts` — no new fact families
+- `indicators` — frozen; no new indicators
+- `evaluation` — frozen; scoring policy unchanged
+- `engine` — frozen; search execution unchanged
+- `index.Profile` — frozen; profile assembly unchanged
+- `projection` — frozen; presentation shapes unchanged
 - CLI and server endpoints — frozen
-
-v0.8.15 exists solely to complete the observation boundary. It changes nothing
-below `RepositoryVestige`.

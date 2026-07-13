@@ -103,13 +103,12 @@ func runQuery(args []string) error {
 		return fmt.Errorf("invalid --limit: must be >= 0")
 	}
 
-	runner := engine.New(evaluation.RankingPolicy{})
 	fullQuery := engine.Query{Conditions: conditions, Limit: 0}
-	totalMatches := len(runner.Query(indexData, fullQuery))
+	totalMatches := len(engine.Execute(indexData, fullQuery, evaluation.RankingPolicy{}))
 
 	query := fullQuery
 	query.Limit = resolvedLimit
-	results := runner.Query(indexData, query)
+	results := engine.Execute(indexData, query, evaluation.RankingPolicy{})
 
 	projections := make([]projection.SearchProjection, len(results))
 	for i, result := range results {

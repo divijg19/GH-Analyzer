@@ -17,7 +17,7 @@ now specified.
 ## Normative Authority
 
 This document is the **normative source** for every `RepositoryFacts` field
-added in v0.8.16. The code in `internal/signals/facts.go` is an
+added in v0.8.16. The code in `internal/facts/repository.go` is an
 **implementation** of this specification.
 
 If a derived fact's formula, input set, or edge-case handling changes, this
@@ -30,18 +30,18 @@ specification.
 ### No New Runtime Layer
 
 Repository intelligence in v0.8.16 lives **only** as a flat expansion of
-`signals.RepositoryFacts`. There is no new package, no new engine, no GraphQL
+`facts.RepositoryFacts`. There is no new package, no new engine, no GraphQL
 change, no acquisition change. Derived knowledge is a field on the existing
-`RepositoryFacts` struct, computed in `FromRepos`.
+`RepositoryFacts` struct, computed in `facts.FromRepos`.
 
 ### Facts, Not Signals
 
 Every value defined here is a **Fact**: a deterministic aggregate derivable
-purely from vestiges, given a `referenceTime`. The four named **Signals**
-(Ownership, Consistency, Depth, Activity) in `analyzer.go` are unchanged. New
-ratio aggregates (ForkRatio, LicensedRatio, etc.) are descriptive portfolio
-facts, *not* Signals: they are not part of the four-signal measurement model and
-do not feed `ExtractSignals`. They are exposed for evidence and future signals.
+purely from observations, given a `referenceTime`. The four named indicators
+(Ownership, Consistency, Depth, Activity) are unchanged. New ratio aggregates
+(ForkRatio, LicensedRatio, etc.) are descriptive portfolio facts, *not*
+indicators: they are not part of the four-value measurement model and do not
+feed `indicators.ExtractSignals`. They are exposed for evidence.
 
 ### Determinism
 
@@ -183,7 +183,7 @@ above; they are ratio-class, not age-class.)
 
 ## Rejected Derivations (from GitFut research)
 
-The GitFut research audit (`research/gitfut/`) classified many GitFut concepts.
+Prior GitFut research classified many GitFut concepts.
 The following were evaluated and **rejected** for v0.8.16 with rationale:
 
 | Concept | Reason |
@@ -192,10 +192,10 @@ The following were evaluated and **rejected** for v0.8.16 with rationale:
 | `archetypeFromShape` (Poacher/Regista/…) | Evaluation/Presentation; not a fact |
 | `pickFinish` (bronze/silver/gold/toty/icon) | Evaluation/Presentation gamification |
 | `legacyScore` / founder forced-overalls | Non-deterministic favouritism |
-| `deriveStyle` activity-shape naming | Future `BehaviourFacts`; needs contribution windows |
+| `deriveStyle` activity-shape naming | Future behaviour facts; needs contribution windows |
 | Language-logo resolution (Devicon CDN) | Presentation; not intelligence |
-| `recent_contributions` / `recent_commits` / `active_days` | Requires new contribution-window observations → `ContributionFacts` (v0.8.17) |
-| Language union across contributed repos | Requires new acquisition → `CollaborationFacts` (v0.8.17) |
+| `recent_contributions` / `recent_commits` / `active_days` | Realized via `ActivityFacts` (v0.8.17) |
+| Language union across contributed repos | Future collaboration facts; requires new acquisition |
 | `followers` / `account_age_years` | Lives on `UserMetadata`, not repository facts |
 
 The *deterministic derivation technique* behind GitFut's log-scaling and
@@ -206,16 +206,17 @@ fact (star distribution, language ranking). The *FIFA framing* is never ported.
 
 ## Out of Scope (Frozen Layers)
 
-v0.8.16 changes **only** `RepositoryFacts` (flat fields) and `FromRepos`. The
-following remain untouched:
+v0.8.16 changed **only** `RepositoryFacts` (flat fields) and `FromRepos`. The
+following remain untouched in the v0.8.17 architectural baseline:
 
-- `RepositoryVestige` — no new observation fields
+- `observations.RepositoryVestige` — no new observation fields
 - `internal/acquisition` (REST/GraphQL/merge/normalize) — frozen
-- `Signals` / `RawScore` (the four indicators) — frozen; formulas stable
+- `indicators.Signals` / `indicators.RawScore` — frozen; formulas stable
 - `internal/evaluation`, `internal/engine`, `internal/projection` — frozen
-- CLI version, server endpoints — frozen until release bump
-- `ContributionFacts`, `TechnologyFacts`, `BehaviourFacts`,
-  `CollaborationFacts` — remain documented placeholders
+- CLI version, server endpoints — frozen
+- Speculative `ContributionFacts` / `TechnologyFacts` / `BehaviourFacts` /
+  `CollaborationFacts` placeholders — removed in v0.8.17 verification pass;
+  future domains are documented ownership boundaries, not exported types
 
 ---
 
@@ -230,7 +231,8 @@ For every fact added in v0.8.16, the following must hold before certification:
 5. Exposed as a flat field on `RepositoryFacts` (only `RankedLanguages` is an
    ordered list; no nested structs or maps).
 6. Not consumed by `ExtractSignals` (it remains the four named signals).
-7. Covered by unit tests in `internal/signals/facts_test.go`.
+7. Covered by unit tests in `internal/signals/facts_test.go` (legacy) or
+   `internal/facts/repository_test.go` (canonical).
 8. Documented here as the normative source; no implementation-only heuristics.
 
 ---

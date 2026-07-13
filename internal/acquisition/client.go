@@ -1,17 +1,15 @@
-// Package acquisition owns the Acquisition and Normalization layers of the
-// Atlas Intelligence Ontology (see docs/INTELLIGENCE.md).
+// Package acquisition owns data fetching and normalization.
 //
-// Acquisition fetches external data and produces DTOs that mirror the API
-// schema. Normalization maps those DTOs to domain vestiges (RepositoryVestige,
-// UserMetadata, Contributions.Summary). This package never interprets,
-// evaluates, or derives intelligence beyond the vestige boundary.
+// It fetches external data via REST and GraphQL, produces DTOs that mirror the
+// API schema, and normalizes those DTOs into domain observations
+// (observations.RepositoryVestige, observations.ActivityObservation,
+// profile.UserMetadata, contributions.Summary).
 //
-// Architectural rules:
-//   - Acquisition owns GitHub's schema, not the domain's. DTOs mirror GitHub
-//     responses exactly and never leak upward.
-//   - Acquisition performs no signal computation, no fact derivation, and no
-//     presentation. Mapping GitHub DTOs to domain models is normalization
-//     (see normalize.go).
+// Acquisition never derives facts, computes indicators, generates evidence,
+// evaluates candidates, or performs presentation. It owns GitHub's schema,
+// not the domain's.
+//
+// Consumed by: index, live, cmd/*.
 package acquisition
 
 import (

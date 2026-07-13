@@ -1,8 +1,7 @@
 package evaluation
 
 import (
-	"github.com/divijg19/Atlas/internal/index"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/indicators"
 )
 
 const (
@@ -19,21 +18,21 @@ const (
 // weights.
 func defaultRankingWeights() map[string]float64 {
 	return map[string]float64{
-		signals.SignalConsistency: consistencyWeight,
-		signals.SignalOwnership:   ownershipWeight,
-		signals.SignalDepth:       depthWeight,
+		indicators.SignalConsistency: consistencyWeight,
+		indicators.SignalOwnership:   ownershipWeight,
+		indicators.SignalDepth:       depthWeight,
 	}
 }
 
 // RankingPolicy computes a weighted score for a candidate profile from its
-// indicator signals. It is the concrete ranking implementation owned by the
+// indicator values. It is the concrete ranking implementation owned by the
 // evaluation layer.
 type RankingPolicy struct {
 	Weights map[string]float64
 }
 
-// Score returns the weighted sum of a profile's indicator signals.
-func (w RankingPolicy) Score(p index.Profile) float64 {
+// Score returns the weighted sum of indicator values.
+func (w RankingPolicy) Score(signals map[string]float64) float64 {
 	weights := w.Weights
 	if len(weights) == 0 {
 		weights = defaultRankingWeights()
@@ -41,7 +40,7 @@ func (w RankingPolicy) Score(p index.Profile) float64 {
 
 	score := 0.0
 	for signal, weight := range weights {
-		value, ok := p.Signals[signal]
+		value, ok := signals[signal]
 		if !ok {
 			continue
 		}
@@ -54,7 +53,7 @@ func (w RankingPolicy) Score(p index.Profile) float64 {
 
 // OverallScore computes the weighted overall score (0-100) from raw component
 // scores.
-func OverallScore(rs signals.RawScore) int {
+func OverallScore(rs indicators.RawScore) int {
 	return int(float64(rs.Consistency)*consistencyWeight +
 		float64(rs.Ownership)*ownershipWeight +
 		float64(rs.Depth)*depthWeight)

@@ -218,6 +218,20 @@ func printInspectProjection(proj projection.InspectProjection) {
 		fmt.Printf("  Latest activity:  %s\n", proj.Facts.LatestActivity.Format("2006-01-02"))
 	}
 
+	if proj.ActivityFacts != nil {
+		fmt.Println()
+		fmt.Println("Activity:")
+		fmt.Printf("  Recent commits:     %d\n", proj.ActivityFacts.RecentCommits)
+		fmt.Printf("  Recent PRs:         %d\n", proj.ActivityFacts.RecentPullRequests)
+		fmt.Printf("  Recent reviews:     %d\n", proj.ActivityFacts.RecentReviews)
+		fmt.Printf("  Recent issues:      %d\n", proj.ActivityFacts.RecentIssues)
+		fmt.Printf("  Lifetime total:     %d\n", proj.ActivityFacts.LifetimeTotal)
+		fmt.Printf("  Active days:        %d\n", proj.ActivityFacts.ActiveDays)
+		fmt.Printf("  Contribution freq:  %.1f\n", proj.ActivityFacts.ContributionFrequency)
+		fmt.Printf("  Repository breadth: %d\n", proj.ActivityFacts.RepositoryBreadth)
+		fmt.Printf("  Contribution breadth: %d\n", proj.ActivityFacts.ContributionBreadth)
+	}
+
 	fmt.Println()
 	fmt.Println("Signals:")
 

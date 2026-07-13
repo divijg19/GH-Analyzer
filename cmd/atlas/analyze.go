@@ -93,7 +93,7 @@ func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 	}
 
 	repos := acquisition.NormalizeRepos(repoDTOs)
-	proj, err := projection.BuildAnalyzeProjection(username, repos)
+	proj, err := projection.BuildAnalyzeProjection(username, repos, time.Now())
 	if err != nil {
 		return projection.AnalyzeProjection{}, err
 	}

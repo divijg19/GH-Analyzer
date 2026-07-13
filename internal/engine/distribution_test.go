@@ -9,18 +9,14 @@ import (
 	"github.com/divijg19/Atlas/internal/index"
 )
 
-func TestBuildDistributionSorted(t *testing.T) {
+func TestDistributionSorted(t *testing.T) {
 	profiles := []index.Profile{
 		{Username: "c", Signals: map[string]float64{"consistency": 0.2}},
 		{Username: "a", Signals: map[string]float64{"consistency": 0.9}},
 		{Username: "b", Signals: map[string]float64{"consistency": 0.5}},
 	}
 
-	d := BuildDistribution(profiles, rankingByUsername(map[string]float64{
-		"a": 0.9,
-		"b": 0.5,
-		"c": 0.2,
-	}))
+	d := buildDistribution(profiles, evaluation.RankingPolicy{Weights: map[string]float64{"consistency": 1.0}})
 
 	want := []float64{0.2, 0.5, 0.9}
 	if len(d.Overall) != len(want) {
@@ -34,7 +30,7 @@ func TestBuildDistributionSorted(t *testing.T) {
 	}
 
 	if profiles[0].Username != "c" || profiles[1].Username != "a" || profiles[2].Username != "b" {
-		t.Fatal("BuildDistribution mutated input profile order")
+		t.Fatal("buildDistribution mutated input profile order")
 	}
 }
 
@@ -89,7 +85,7 @@ func TestExecuteCalibrationStabilityPreservesOrdering(t *testing.T) {
 	}
 	rawScores := make([]raw, 0, len(idx.Profiles))
 	for _, p := range idx.Profiles {
-		rawScores = append(rawScores, raw{username: p.Username, score: ranking.Score(p)})
+		rawScores = append(rawScores, raw{username: p.Username, score: ranking.Score(p.Signals)})
 	}
 	sort.SliceStable(rawScores, func(i, j int) bool {
 		if rawScores[i].score == rawScores[j].score {
@@ -121,15 +117,9 @@ func TestExecuteSmallDatasetReturnsRawScores(t *testing.T) {
 	results := Execute(idx, Query{}, ranking)
 
 	for _, result := range results {
-		raw := ranking.Score(result.Profile)
+		raw := ranking.Score(result.Profile.Signals)
 		if math.Abs(result.Score-raw) > 1e-9 {
 			t.Fatalf("expected raw score %.8f for %s, got %.8f", raw, result.Profile.Username, result.Score)
 		}
 	}
-}
-
-type rankingByUsername map[string]float64
-
-func (r rankingByUsername) Score(p index.Profile) float64 {
-	return r[p.Username]
 }
