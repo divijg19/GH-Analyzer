@@ -1,10 +1,3 @@
-// Package evaluation owns score interpretation: overall score assembly, the
-// small-sample penalty, confidence classification, and the ranking policy.
-//
-// It is the single source of truth for how raw component scores
-// (signals.RawScore) become an evaluated, orderable result. The engine and
-// projection layers consume RankingPolicy but never recompute scores.
-// See docs/INTELLIGENCE.md.
 package evaluation
 
 // Confidence represents the confidence level of a search score.

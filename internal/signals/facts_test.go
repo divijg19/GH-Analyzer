@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+// minDepthRepoSize mirrors facts.minDepthRepoSize for use as a test fixture
+// boundary. The canonical constant lives in internal/facts.
+const minDepthRepoSize = 50
+
 func TestFromReposEmpty(t *testing.T) {
 	f := FromRepos(nil, refTime)
 	assertZeroFacts(t, f)

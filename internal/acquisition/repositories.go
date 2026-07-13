@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/observations"
 )
 
-// LicenseRef is the minimal license reference returned by the GitHub REST API.
-type LicenseRef struct {
+// licenseRef is the minimal license reference returned by the GitHub REST API.
+type licenseRef struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
 }
@@ -27,7 +27,7 @@ type RepoDTO struct {
 	Visibility    string      `json:"visibility"`
 	Archived      bool        `json:"archived"`
 	IsTemplate    bool        `json:"is_template"`
-	License       *LicenseRef `json:"license"`
+	License       *licenseRef `json:"license"`
 	Topics        []string    `json:"topics"`
 	Stars         int         `json:"stargazers_count"`
 	Forks         int         `json:"forks_count"`
@@ -76,7 +76,7 @@ func (c *Client) FetchRepos(ctx context.Context, username string) ([]RepoDTO, er
 
 // FetchReposNormalized retrieves a user's public repositories and returns them
 // as domain models. It is equivalent to FetchRepos followed by NormalizeRepos.
-func (c *Client) FetchReposNormalized(ctx context.Context, username string) ([]signals.RepositoryVestige, error) {
+func (c *Client) FetchReposNormalized(ctx context.Context, username string) ([]observations.RepositoryVestige, error) {
 	dtos, err := c.FetchRepos(ctx, username)
 	if err != nil {
 		return nil, err

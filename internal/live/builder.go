@@ -1,12 +1,19 @@
-// Package live builds candidate profiles by fetching directly from GitHub.
+// Package live builds candidate profiles on demand by fetching directly
+// from GitHub.
 //
-// It composes the acquisition, signals, and index layers to produce a Profile
-// on demand (the "live" path), as opposed to reading from a stored dataset.
-// See docs/INTELLIGENCE.md.
+// It composes acquisition, facts, indicators, and index layers to produce a
+// Profile without a pre-built dataset (the "live" path).
+//
+// Live never acquires directly, derives facts, computes indicators, evaluates
+// candidates, or performs presentation — it delegates all of those to the
+// canonical packages.
+//
+// Consumed by: cmd/atlas.
 package live
 
 import (
 	"context"
+	"time"
 
 	"github.com/divijg19/Atlas/internal/acquisition"
 	indexpkg "github.com/divijg19/Atlas/internal/index"
@@ -25,7 +32,7 @@ type fetcher interface {
 var Client fetcher = acquisition.NewClient()
 
 // BuildLiveIndex fetches live data from GitHub for a search query and
-// returns a complete index with profiles containing signals, facts,
+// returns a complete index with profiles containing indicators, facts,
 // metadata, and contributions.
 func BuildLiveIndex(ctx context.Context, query string) (indexpkg.Index, error) {
 	usernames, err := FetchLiveUsernames(ctx, query)
@@ -35,7 +42,7 @@ func BuildLiveIndex(ctx context.Context, query string) (indexpkg.Index, error) {
 
 	idx := indexpkg.Index{Profiles: make([]indexpkg.Profile, 0, len(usernames))}
 	for _, username := range usernames {
-		profile, err := indexpkg.BuildProfile(ctx, Client, username)
+		profile, err := indexpkg.BuildProfile(ctx, Client, username, time.Now())
 		if err != nil {
 			continue
 		}

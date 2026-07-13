@@ -1,6 +1,6 @@
 package acquisition
 
-import "github.com/divijg19/Atlas/internal/signals"
+import obs "github.com/divijg19/Atlas/internal/observations"
 
 // mergeVestiges combines a REST-derived RepositoryVestige with
 // GraphQL-authoritative observations to produce the final vestige.
@@ -26,7 +26,7 @@ import "github.com/divijg19/Atlas/internal/signals"
 // GraphQL-authoritative field is zero-valued (unobserved), it is explicitly
 // set to its Go zero value — representing "not yet observed" per the
 // observation specification.
-func mergeVestiges(base, enrichment signals.RepositoryVestige) signals.RepositoryVestige {
+func mergeVestiges(base, enrichment obs.RepositoryVestige) obs.RepositoryVestige {
 	// GraphQL-authoritative — LanguageDistribution (§4, Tier 1)
 	base.LanguageDistribution = enrichment.LanguageDistribution
 

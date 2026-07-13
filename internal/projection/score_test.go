@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/divijg19/Atlas/internal/signals"
+	obs "github.com/divijg19/Atlas/internal/observations"
 )
 
 func TestExtractTopRepositories(t *testing.T) {
-	repos := []signals.RepositoryVestige{
+	repos := []obs.RepositoryVestige{
 		{Name: "a", Size: 10, Fork: false},
 		{Name: "b", Size: 50, Fork: false},
 		{Name: "c", Size: 30, Fork: false},
@@ -16,7 +16,7 @@ func TestExtractTopRepositories(t *testing.T) {
 		{Name: "e", Size: 40, Fork: false},
 	}
 
-	top := ExtractTopRepositories(repos, 3)
+	top := extractTopRepositories(repos, 3)
 	if len(top) != 3 {
 		t.Fatalf("expected 3 top repos, got %d", len(top))
 	}
@@ -34,31 +34,31 @@ func TestExtractTopRepositories(t *testing.T) {
 }
 
 func TestExtractTopRepositoriesLimitExceedsCount(t *testing.T) {
-	repos := []signals.RepositoryVestige{
+	repos := []obs.RepositoryVestige{
 		{Name: "a", Size: 10, Fork: false},
 		{Name: "b", Size: 50, Fork: false},
 	}
-	top := ExtractTopRepositories(repos, 10)
+	top := extractTopRepositories(repos, 10)
 	if len(top) != 2 {
 		t.Fatalf("expected 2 repos, got %d", len(top))
 	}
 }
 
 func TestExtractTopRepositoriesEmpty(t *testing.T) {
-	if got := ExtractTopRepositories(nil, 3); len(got) != 0 {
+	if got := extractTopRepositories(nil, 3); len(got) != 0 {
 		t.Fatalf("expected empty slice, got %d", len(got))
 	}
 }
 
 func TestBuildAnalyzeProjection(t *testing.T) {
 	now := time.Now()
-	repos := []signals.RepositoryVestige{
+	repos := []obs.RepositoryVestige{
 		{Name: "big", Size: 100, Fork: false, UpdatedAt: now},
 		{Name: "small", Size: 20, Fork: false, UpdatedAt: now},
 		{Name: "fork", Size: 200, Fork: true, UpdatedAt: now},
 	}
 
-	proj, err := BuildAnalyzeProjection("alice", repos)
+	proj, err := BuildAnalyzeProjection("alice", repos, now)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestBuildAnalyzeProjection(t *testing.T) {
 		t.Fatalf("overall out of range: %d", proj.Overall)
 	}
 
-	again, err := BuildAnalyzeProjection("alice", repos)
+	again, err := BuildAnalyzeProjection("alice", repos, now)
 	if err != nil {
 		t.Fatalf("unexpected error on second call: %v", err)
 	}

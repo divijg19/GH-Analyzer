@@ -3,23 +3,23 @@ package projection
 import (
 	"sort"
 
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/observations"
 )
 
-type TopRepository struct {
+type topRepository struct {
 	Name string `json:"name"`
 	Size int    `json:"size"`
 }
 
-// ExtractTopRepositories returns the top N non-fork repositories sorted by size descending
-func ExtractTopRepositories(repos []signals.RepositoryVestige, limit int) []TopRepository {
-	reposBySize := make([]TopRepository, 0, len(repos))
+// extractTopRepositories returns the top N non-fork repositories sorted by size descending
+func extractTopRepositories(repos []observations.RepositoryVestige, limit int) []topRepository {
+	reposBySize := make([]topRepository, 0, len(repos))
 
 	for _, repo := range repos {
 		if repo.Fork {
 			continue
 		}
-		reposBySize = append(reposBySize, TopRepository{
+		reposBySize = append(reposBySize, topRepository{
 			Name: repo.Name,
 			Size: repo.Size,
 		})

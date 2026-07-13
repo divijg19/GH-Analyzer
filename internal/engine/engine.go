@@ -13,29 +13,13 @@ type Result struct {
 	Reasons []string
 }
 
-type Engine struct {
-	ranking RankingStrategy
-}
-
-func New(ranking RankingStrategy) *Engine {
-	if ranking == nil {
-		ranking = evaluation.RankingPolicy{}
-	}
-
-	return &Engine{ranking: ranking}
-}
-
-func (e *Engine) Query(index idx.Index, query Query) []Result {
-	return Execute(index, query, e.ranking)
-}
-
-func Execute(index idx.Index, query Query, ranking RankingStrategy) []Result {
+func Execute(index idx.Index, query Query, ranking rankingStrategy) []Result {
 	if ranking == nil {
 		ranking = evaluation.RankingPolicy{}
 	}
 
 	profiles := index.All()
-	distribution := BuildDistribution(profiles, ranking)
+	distribution := buildDistribution(profiles, ranking)
 	results := make([]Result, 0, len(profiles))
 
 	for _, profile := range profiles {
@@ -43,12 +27,12 @@ func Execute(index idx.Index, query Query, ranking RankingStrategy) []Result {
 			continue
 		}
 
-		rawScore := ranking.Score(profile)
+		rawScore := ranking.Score(profile.Signals)
 
 		results = append(results, Result{
 			Profile: profile,
-			Score:   CalibrateScore(distribution, rawScore),
-			Reasons: Explain(profile, query),
+			Score:   calibrateScore(distribution, rawScore),
+			Reasons: explain(profile, query),
 		})
 	}
 
@@ -69,7 +53,7 @@ func Execute(index idx.Index, query Query, ranking RankingStrategy) []Result {
 
 func matchesAllConditions(profile idx.Profile, conditions []Condition) bool {
 	for _, condition := range conditions {
-		if !Match(profile, condition) {
+		if !match(profile, condition) {
 			return false
 		}
 	}

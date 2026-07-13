@@ -17,7 +17,7 @@ type Condition struct {
 	Value    float64
 }
 
-func Match(p index.Profile, c Condition) bool {
+func match(p index.Profile, c Condition) bool {
 	signal := strings.ToLower(strings.TrimSpace(c.Signal))
 	signalValue, ok := p.Signals[signal]
 	if !ok {

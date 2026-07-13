@@ -1,8 +1,12 @@
-// Package search defines query parsing and condition matching used by the
-// engine to filter and rank candidates.
+// Package search owns query parsing and intent mapping for the search path.
 //
-// It owns the declarative query model (conditions, comparators) consumed by
-// internal/engine. It performs no I/O and no scoring. See docs/INTELLIGENCE.md.
+// It translates natural-language keywords and structured conditions into
+// engine.Query values consumed by the engine layer.
+//
+// Search never acquires observations, derives facts, computes indicators,
+// generates evidence, evaluates candidates, or performs presentation.
+//
+// Consumed by: cmd/atlas.
 package search
 
 import (
@@ -11,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/divijg19/Atlas/internal/engine"
-	"github.com/divijg19/Atlas/internal/signals"
+	"github.com/divijg19/Atlas/internal/indicators"
 )
 
 func ParseCondition(raw string) (engine.Condition, error) {
@@ -69,7 +73,7 @@ func NormalizeThreshold(value float64) (float64, error) {
 
 func isAllowedSignal(signal string) bool {
 	switch signal {
-	case signals.SignalConsistency, signals.SignalOwnership, signals.SignalDepth, signals.SignalActivity:
+	case indicators.SignalConsistency, indicators.SignalOwnership, indicators.SignalDepth, indicators.SignalActivity:
 		return true
 	default:
 		return false

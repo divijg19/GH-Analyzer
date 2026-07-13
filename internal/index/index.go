@@ -2,16 +2,22 @@ package index
 
 import (
 	"github.com/divijg19/Atlas/internal/contributions"
+	"github.com/divijg19/Atlas/internal/facts"
 	"github.com/divijg19/Atlas/internal/profile"
-	"github.com/divijg19/Atlas/internal/signals"
 )
 
+// Profile is the canonical candidate aggregate. It stores what Atlas knows
+// about a candidate before evaluation: repository facts, indicators,
+// activity facts, metadata, and contributions.
+// It never stores scores, confidence, or evaluation results.
+
 type Profile struct {
-	Username      string                   `json:"username"`
-	Signals       map[string]float64       `json:"signals"`
-	Facts         *signals.RepositoryFacts `json:"facts,omitempty"`
-	Metadata      *profile.UserMetadata    `json:"metadata,omitempty"`
-	Contributions *contributions.Summary   `json:"contributions,omitempty"`
+	Username      string                 `json:"username"`
+	Signals       map[string]float64     `json:"signals"`
+	Facts         *facts.RepositoryFacts `json:"facts,omitempty"`
+	Metadata      *profile.UserMetadata  `json:"metadata,omitempty"`
+	Contributions *contributions.Summary `json:"contributions,omitempty"`
+	ActivityFacts *facts.ActivityFacts   `json:"activity_facts,omitempty"`
 }
 
 type Index struct {
