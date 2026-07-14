@@ -3,6 +3,7 @@ package index
 import (
 	"github.com/divijg19/Atlas/internal/contributions"
 	"github.com/divijg19/Atlas/internal/facts"
+	"github.com/divijg19/Atlas/internal/observations"
 	"github.com/divijg19/Atlas/internal/profile"
 )
 
@@ -12,12 +13,13 @@ import (
 // It never stores scores, confidence, or evaluation results.
 
 type Profile struct {
-	Username      string                 `json:"username"`
-	Signals       map[string]float64     `json:"signals"`
-	Facts         *facts.RepositoryFacts `json:"facts,omitempty"`
-	Metadata      *profile.UserMetadata  `json:"metadata,omitempty"`
-	Contributions *contributions.Summary `json:"contributions,omitempty"`
-	ActivityFacts *facts.ActivityFacts   `json:"activity_facts,omitempty"`
+	Username      string                       `json:"username"`
+	Signals       map[string]float64           `json:"signals"`
+	Repositories  []observations.RepositoryVestige `json:"repositories,omitempty"`
+	Facts         *facts.RepositoryFacts       `json:"facts,omitempty"`
+	Metadata      *profile.UserMetadata        `json:"metadata,omitempty"`
+	Contributions *contributions.Summary       `json:"contributions,omitempty"`
+	ActivityFacts *facts.ActivityFacts         `json:"activity_facts,omitempty"`
 }
 
 type Index struct {

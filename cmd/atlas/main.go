@@ -12,7 +12,7 @@ const (
 	defaultDatasetPath = "dataset.json"
 	defaultQueryLimit  = 10
 	defaultQueryPreset = "strong"
-	cliVersion         = "v0.8.17"
+	cliVersion         = "v0.9.0"
 )
 
 func main() {
@@ -55,6 +55,8 @@ func runCLI(args []string) error {
 		return runSearch(rest)
 	case "analyze":
 		return runAnalyze(rest)
+	case "intelligence":
+		return runIntelligence(rest)
 	default:
 		// Backward-compatible mode: treat first positional token as username.
 		if strings.HasPrefix(first, "-") {

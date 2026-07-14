@@ -74,6 +74,7 @@ func BuildProfile(ctx context.Context, fetcher ProfileFetcher, username string, 
 	return Profile{
 		Username:      username,
 		Signals:       indicators.SignalsToMap(signalValues),
+		Repositories:  repos,
 		Facts:         &repoFacts,
 		Metadata:      meta,
 		Contributions: contribSummary,

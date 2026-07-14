@@ -1,252 +1,164 @@
-# Atlas Repository Intelligence Specification
+# Repository Intelligence
 
-This document is the **canonical specification for derived repository
-intelligence** in Atlas. It defines every deterministic fact derived from
-`RepositoryVestige` observations, its derivation formula, its observation
-inputs, its edge-case handling, and its invariants.
-
-It is the specification for **v0.8.16: Repository Intelligence**.
-
-Where `OBSERVATION_SPECIFICATION.md` defines *observations* (what Atlas
-acquires), `INTELLIGENCE.md` defines the *ontology* (what intelligence is),
-and `ARCHITECTURE.md` defines *layer ownership*, this document defines the
-*derivation contract* (how observations become facts). The three are
-deliberately separate: acquisition evolves, ontology is stable, derivation is
-now specified.
-
-## Normative Authority
-
-This document is the **normative source** for every `RepositoryFacts` field
-added in v0.8.16. The code in `internal/facts/repository.go` is an
-**implementation** of this specification.
-
-If a derived fact's formula, input set, or edge-case handling changes, this
-document **must be updated first**. The code is then updated to match. No code
-change that alters a derivation is valid without a corresponding change to this
-specification.
-
-## Architectural Invariants
-
-### No New Runtime Layer
-
-Repository intelligence in v0.8.16 lives **only** as a flat expansion of
-`facts.RepositoryFacts`. There is no new package, no new engine, no GraphQL
-change, no acquisition change. Derived knowledge is a field on the existing
-`RepositoryFacts` struct, computed in `facts.FromRepos`.
-
-### Facts, Not Signals
-
-Every value defined here is a **Fact**: a deterministic aggregate derivable
-purely from observations, given a `referenceTime`. The four named indicators
-(Ownership, Consistency, Depth, Activity) are unchanged. New ratio aggregates
-(ForkRatio, LicensedRatio, etc.) are descriptive portfolio facts, *not*
-indicators: they are not part of the four-value measurement model and do not
-feed `indicators.ExtractSignals`. They are exposed for evidence.
-
-### Determinism
-
-Equivalent vestige state plus equivalent `referenceTime` must always produce
-equivalent `RepositoryFacts` values. No clock dependence beyond the explicit
-`referenceTime` parameter. No provider dependence beyond the normalized
-vestiges.
-
-### Vestige-Only Inputs
-
-Every derived fact consumes only fields already present on `RepositoryVestige`
-(after v0.8.15). v0.8.16 adds **no new observations**. It does not read
-`UserProfile`, `Contributions.Summary`, acquisition DTOs, or HTTP. Any
-intelligence requiring new observations (contribution windows, language union
-across contributed repos, follower counts) is deferred.
-
-### Flat Expansion Only
-
-`RepositoryFacts` gains scalar fields. It does not gain nested sub-structs,
-maps of arbitrary depth, or per-repo slices. `RankedLanguages` is the single
-allowed ordered list (a deterministic ranking, not a nested object). This keeps
-the fact struct flat, serializable, and inspectable.
+*Layer: Repository Intelligence (v0.9.0)*
+*Status: Normative. Frozen.*
+*Owner: `internal/repositoryintelligence`. Canonical consumer: `atlas intelligence` (via Candidate Intelligence aggregation).*
 
 ---
 
-## Observation Inputs
+## 1. Definition
 
-All derivations consume the following `RepositoryVestige` fields (already owned
-by Atlas per `OBSERVATION_SPECIFICATION.md`):
+**Repository Intelligence is the deterministic semantic interpretation of a single
+repository (an `observations.RepositoryVestige`).** It answers *what this repository
+is and how it behaves* — distinct from *who built it* (Candidate Intelligence) and
+*how it changed over time* (Activity Intelligence).
 
-| Domain | Fields consumed |
-| --- | --- |
-| Identity | `Archived`, `Template` |
-| Ownership | `Fork`, `CollaboratorCount` |
-| Timeline | `CreatedAt`, `ReleaseCount`, `LatestReleaseAt` |
-| Technology | `License`, `Topics`, `DefaultBranchProtected`, `LanguageDistribution` |
-| Maintenance | `Stars`, `OpenIssues`, `PullRequestCount`, `Forks`, `Watchers` |
-| Structure | `Size`, `DiscussionEnabled` |
+Repository Intelligence is the second interpretive layer in the Atlas ontology. It
+sits directly above the repository facts family and below Candidate Intelligence,
+which aggregates it across a portfolio. This is the structure GitFut lacked: GitFut
+conflated repository traits with candidate traits. Atlas separates them so that the
+same repository can be interpreted once and aggregated many times (per owner, per
+organization, per project family).
 
-None of these require new acquisition. v0.8.16 is a pure derivation release.
+> **Information Invariant.** Repository Intelligence NEVER introduces information.
+> Every value it reports is a deterministic function of the `RepositoryVestige`
+> (and the reference time). It reorganizes observable repository facts into
+> interpretable dimensions; it does not infer facts that were not observed.
 
----
+## 2. Scope
 
-## Derived Fact Catalogue
+In scope:
+- The intrinsic character of one repository: identity, health, maintenance,
+  delivery, architecture, technology, community, documentation, quality, complexity,
+  lifecycle, governance, risk.
+- Deterministic, replayable derivation at any reference time.
 
-Each fact lists: its field name on `RepositoryFacts`, the vestige inputs, the
-deterministic formula, its type/range, and edge-case handling. All formulas are
-evaluated inside `FromRepos(repos, referenceTime)`.
+Out of scope (owned by other layers):
+- *Who* contributed and in what role → Candidate / Contribution Intelligence.
+- *How* the repository evolved over time → Activity Intelligence.
+- Aggregation across a portfolio → Candidate Intelligence (see
+  `docs/CANDIDATE_INTELLIGENCE.md`).
+- Relationship inference between repositories → Project Families (v0.10.x).
 
-### 1. Star Distribution
+## 3. Pipeline Position
 
-| Field | Type | Formula | Edge cases |
-| --- | --- | --- | --- |
-| `MaxRepoStars` | `int` | `max(repo.Stars)` over all repos | `0` if no repos |
-| `MeanRepoStars` | `float64` | `TotalStars / TotalRepos` | `0` if `TotalRepos == 0` |
+```
+GitHub → Acquisition → Observations (RepositoryVestige)
+                              ↓
+                   Facts (facts.RepositoryFacts, per-portfolio aggregate)
+                              ↓
+        Repository Indicators  →  Repository Evidence  →  Repository Intelligence
+                              ↓
+                   Candidate Intelligence (aggregation)
+                              ↓
+                   atlas intelligence → Analyze / Inspect / Search / API
+```
 
-`MaxRepoStars` captures the candidate's single highest-profile repository
-independent of portfolio size. `MeanRepoStars` normalizes total stardom by
-volume, distinguishing a few popular repos from broadly popular ones.
+Repository Intelligence is computed **per `RepositoryVestige`**. The portfolio
+aggregate `facts.RepositoryFacts` remains the canonical fact family for the
+repository domain; Repository Intelligence derives its per-repo indicators directly
+from the vestige, mirroring how the aggregate is derived, so the two never disagree.
 
-### 2. Technology Breadth
+## 4. The Dimension Contract
 
-| Field | Type | Formula | Edge cases |
-| --- | --- | --- | --- |
-| `LanguageCount` | `int` | count of distinct keys across all `LanguageDistribution` maps | `0` if no language data |
-| `RankedLanguages` | `[]string` | union of language keys, each summed by bytes; sort by total bytes descending; tiebreak by language name ascending | empty slice if no language data |
+Every dimension satisfies the same contract as Candidate Intelligence
+(`docs/CANDIDATE_INTELLIGENCE.md` §8):
 
-`LanguageCount` is the **distinct** language universe of the portfolio (the
-union across repos, not a per-repo count). `RankedLanguages` is the same union
-ordered by aggregate byte share — a deterministic primary-to-secondary
-language ranking.
+```go
+type RepositoryDimension interface {
+    Name() string
+    Evidence() []evidence.EvidenceGroup
+    Summary() string
+}
+```
 
-**Ordering contract (must hold across Go versions):**
+- `Name()` returns the stable, lowercase dimension identifier.
+- `Evidence()` returns the observable facts that support the conclusion, grouped by
+  signal. Evidence traces to the repository observation; no evidence is invented.
+- `Summary()` is a deterministic, human-readable sentence derived purely from
+  `Evidence()`. Dimension → Evidence → Summary: the summary is a rendering of the
+  evidence, never an independent computation.
 
-1. **Sum before order.** Byte counts are summed across all repos into a single
-   per-language total *before* any comparison. No per-repo ordering is used.
-2. **Primary key: byte total descending.** Higher aggregate bytes rank first.
-3. **Tiebreak: language name ascending.** When two languages have identical
-   byte totals, the lexicographically smaller name ranks first.
-4. **Total order.** Because the tiebreak is a strict total order over language
-   names (names are unique), the final ordering is fully determined and does
-   **not** depend on `map` iteration order or `sort` implementation details.
-5. **Stable and reproducible.** Equivalent vestige state always yields an
-   identical `RankedLanguages` slice, on every Go toolchain.
+Every dimension also exposes a `Level` (deterministic qualitative classification)
+and a `Confidence` (how much evidence supported the conclusion).
 
-This is the GitFut `languages` / `rankedLanguages` idea (signals.ts:18,22),
-adapted: the *deterministic derivation* is kept, the Devicon-logo presentation
-and FIFA `skillMoves` scale are rejected.
+## 5. The Thirteen Dimensions
 
-### 3. Release & Maintenance Aggregates
+Repository Intelligence interprets each repository across thirteen dimensions. The
+order is canonical.
 
-| Field | Type | Formula | Edge cases |
-| --- | --- | --- | --- |
-| `TotalReleases` | `int` | `sum(repo.ReleaseCount)` | `0` if none |
-| `LatestReleaseAt` | `time.Time` | `max(repo.LatestReleaseAt)` over repos with releases | zero time if none |
-| `ReleasedRepos` | `int` | count of repos with `ReleaseCount > 0` | `0` |
-| `TotalPullRequests` | `int` | `sum(repo.PullRequestCount)` | `0` |
-| `TotalCollaborators` | `int` | `sum(repo.CollaboratorCount)` | `0` |
-| `ProtectedBranchRepos` | `int` | count of repos with `DefaultBranchProtected == true` | `0` |
-| `DiscussionRepos` | `int` | count of repos with `DiscussionEnabled == true` | `0` |
+| # | Dimension | Question answered |
+|---|-----------|-------------------|
+| 1 | `identity` | Is this repository clearly identified and distinguishable? |
+| 2 | `health` | Is this repository alive and receiving attention? |
+| 3 | `maintenance` | Is this repository actively maintained? |
+| 4 | `delivery` | Does this repository ship releases with discipline? |
+| 5 | `architecture` | How is this repository structured? |
+| 6 | `technology` | What stack does this repository use? |
+| 7 | `community` | How much external engagement does this repository attract? |
+| 8 | `documentation` | Is this repository documented? |
+| 9 | `quality` | What quality signals does this repository exhibit? |
+| 10 | `complexity` | How large and complex is this repository? |
+| 11 | `lifecycle` | What maturity stage is this repository in? |
+| 12 | `governance` | How is this repository owned and protected? |
+| 13 | `risk` | How fragile or at-risk is this repository? |
 
-These are pure summations/counts over fields already present after v0.8.15. They
-answer "how much release, PR, and collaboration infrastructure does this
-portfolio exhibit?" without interpretation.
+Each dimension's derivation is fully deterministic from the vestige fields:
 
-### 4. Ratio Facts (deterministic, in [0, 1])
+- **identity**: presence of `Description`, `Topics` (count), `License`,
+  `DefaultBranch`, and non-`template` status.
+- **health**: `days since last push` (≤90 active, ≤365 dormant, else inactive) and
+  `Stars`, `OpenIssues` as attention signals.
+- **maintenance**: `days since last push`, `Archived`, and release recency. A
+  repository pushed within 90 days and not archived is *maintained*.
+- **delivery**: `ReleaseCount` and `days since latest release`. No releases ⇒
+  *undisciplined*; recent releases ⇒ *disciplined*.
+- **architecture**: `Size` and `language count`. Single-language small repos are
+  *narrow*; multi-language or large repos are *broad*. Empty (`Size == 0`) ⇒ *empty*.
+- **technology**: primary language (ranked by bytes) and language breadth. Breadth
+  of stack is reported; "modernity" is intentionally not inferred (no evidence).
+- **community**: `Forks`, `Watchers`, `CollaboratorCount`, `PullRequestCount`,
+  `DiscussionEnabled`. Engagement is reported, not judgmentally scored.
+- **documentation**: presence of `Description`, `Topics`, `License`, and
+  `DiscussionEnabled`. (README is not part of the vestige and is not inferred.)
+- **quality**: `License` present, `DefaultBranchProtected`, `CollaboratorCount > 0`,
+  `DiscussionEnabled`. These are observable quality signals only.
+- **complexity**: `Size` and language count as scale proxies. LOC is not observed
+  and is not approximated.
+- **lifecycle**: `age` (days since `CreatedAt`), `Archived`, `ReleaseCount`,
+  `Template`. Mature repositories are old, released, and not archived.
+- **governance**: `CollaboratorCount`, `DefaultBranchProtected`, `Visibility`,
+  `Fork`. Protected branches with collaborators indicate shared governance; forks
+  and solo repos indicate individual ownership.
+- **risk**: composite of `Archived`, stale push (>365d), `CollaboratorCount <= 1`,
+  missing `License`, and `Fork`. Each is a discrete, evidence-backed flag.
 
-| Field | Type | Formula | Edge cases |
-| --- | --- | --- | --- |
-| `ForkRatio` | `float64` | `ForkRepos / TotalRepos` | `0` if `TotalRepos == 0` |
-| `LicensedRatio` | `float64` | `LicensedRepos / TotalRepos` | `0` if `TotalRepos == 0` |
-| `ArchivedRatio` | `float64` | `ArchivedRepos / TotalRepos` | `0` if `TotalRepos == 0` |
-| `MeanRepoSize` | `float64` | `sum(repo.Size) / TotalRepos` | `0` if `TotalRepos == 0` |
-| `TopicBreadth` | `float64` | `TotalTopics / TotalRepos` | `0` if `TotalRepos == 0` |
+## 6. Determinism and Replay
 
-These normalize counts against portfolio size. `ForkRatio` answers "what share
-of this portfolio is original work versus forks?" — the GitFut `fork` signal,
-adapted to a ratio fact. `LicensedRatio` and `ArchivedRatio` characterize
-portfolio hygiene. All are clamped to [0, 1] by construction (`numerator ≤
-denominator`).
+`BuildRepositoryIntelligence(ctx, vestige, referenceTime)` is pure. Identical inputs
+yield a byte-identical `RepositoryIntelligence`. All time-relative thresholds use the
+supplied `referenceTime`, never `time.Now`, so intelligence is replayable at any
+historical point.
 
-### 5. Freshness & Age (deterministic given `referenceTime`)
+## 7. Aggregation Contract (consumed by Candidate Intelligence)
 
-| Field | Type | Formula | Edge cases |
-| --- | --- | --- | --- |
-| `PortfolioAgeDays` | `int` | `referenceTime - OldestCreated`, in days | `0` if `OldestCreated` is zero |
-| `NewestRepoAgeDays` | `int` | `referenceTime - NewestCreated`, in days | `0` if `NewestCreated` is zero |
-| `DaysSinceLatestRelease` | `int` | `referenceTime - LatestReleaseAt`, in days | `0` if no release |
+Candidate Intelligence aggregates a slice of `RepositoryIntelligence` (one per
+repository) into its own seven portfolio dimensions. The aggregation is defined in
+`docs/CANDIDATE_INTELLIGENCE.md` and is the ONLY way portfolio intelligence is
+produced: Candidate Intelligence does not re-read `RepositoryVestige` directly for
+these dimensions. This keeps a single owner per ontology layer.
 
-`PortfolioAgeDays` is the **PortfolioAge** concept; `NewestRepoAgeDays` is
-**RepositoryFreshness** (how recently the candidate started something new).
-`DaysSinceLatestRelease` is **ReleaseCadence** (recency of shipping). All age
-values accept `referenceTime` explicitly — no system-clock dependence.
+Reserved for future layers (not implemented in v0.9.0): Contribution Intelligence,
+User Intelligence, Behavior Intelligence. When added, Candidate Intelligence will
+aggregate those as well.
 
-(`MeanRepoSize` and `TopicBreadth` are averages, grouped under Ratio Facts
-above; they are ratio-class, not age-class.)
+## 8. Forbidden Patterns
 
----
-
-## Rejected Derivations (from GitFut research)
-
-Prior GitFut research classified many GitFut concepts.
-The following were evaluated and **rejected** for v0.8.16 with rationale:
-
-| Concept | Reason |
-| --- | --- |
-| FIFA six-stat model (PAC/SHO/PAS/DRI/DEF/PHY) | Gamified 0–99 rating; not a fact |
-| `archetypeFromShape` (Poacher/Regista/…) | Evaluation/Presentation; not a fact |
-| `pickFinish` (bronze/silver/gold/toty/icon) | Evaluation/Presentation gamification |
-| `legacyScore` / founder forced-overalls | Non-deterministic favouritism |
-| `deriveStyle` activity-shape naming | Future behaviour facts; needs contribution windows |
-| Language-logo resolution (Devicon CDN) | Presentation; not intelligence |
-| `recent_contributions` / `recent_commits` / `active_days` | Realized via `ActivityFacts` (v0.8.17) |
-| Language union across contributed repos | Future collaboration facts; requires new acquisition |
-| `followers` / `account_age_years` | Lives on `UserMetadata`, not repository facts |
-
-The *deterministic derivation technique* behind GitFut's log-scaling and
-language ranking is acknowledged and adapted where it maps cleanly to a flat
-fact (star distribution, language ranking). The *FIFA framing* is never ported.
-
----
-
-## Out of Scope (Frozen Layers)
-
-v0.8.16 changed **only** `RepositoryFacts` (flat fields) and `FromRepos`. The
-following remain untouched in the v0.8.17 architectural baseline:
-
-- `observations.RepositoryVestige` — no new observation fields
-- `internal/acquisition` (REST/GraphQL/merge/normalize) — frozen
-- `indicators.Signals` / `indicators.RawScore` — frozen; formulas stable
-- `internal/evaluation`, `internal/engine`, `internal/projection` — frozen
-- CLI version, server endpoints — frozen
-- Speculative `ContributionFacts` / `TechnologyFacts` / `BehaviourFacts` /
-  `CollaborationFacts` placeholders — removed in v0.8.17 verification pass;
-  future domains are documented ownership boundaries, not exported types
-
----
-
-## Fact Certification Checklist
-
-For every fact added in v0.8.16, the following must hold before certification:
-
-1. Derivable solely from `RepositoryVestige` fields present after v0.8.15.
-2. Deterministic given `repos` and `referenceTime`.
-3. Edge cases (empty input, zero denominators) handled explicitly.
-4. Implemented in `FromRepos` with no new package or layer.
-5. Exposed as a flat field on `RepositoryFacts` (only `RankedLanguages` is an
-   ordered list; no nested structs or maps).
-6. Not consumed by `ExtractSignals` (it remains the four named signals).
-7. Covered by unit tests in `internal/signals/facts_test.go` (legacy) or
-   `internal/facts/repository_test.go` (canonical).
-8. Documented here as the normative source; no implementation-only heuristics.
-
----
-
-## Historical Note
-
-- **v0.8.16** — Repository Intelligence release. Established this specification
-  as the normative source for derived `RepositoryFacts`. Expanded
-  `RepositoryFacts` with flat deterministic aggregates: star distribution
-  (`MaxRepoStars`, `MeanRepoStars`), technology breadth (`LanguageCount`,
-  `RankedLanguages`), release/maintenance aggregates (`TotalReleases`,
-  `LatestReleaseAt`, `ReleasedRepos`, `TotalPullRequests`, `TotalCollaborators`,
-  `ProtectedBranchRepos`, `DiscussionRepos`), ratio facts (`ForkRatio`,
-  `LicensedRatio`, `ArchivedRatio`), and freshness/age facts
-  (`PortfolioAgeDays`, `NewestRepoAgeDays`, `DaysSinceLatestRelease`,
-  `MeanRepoSize`, `TopicBreadth`). No new observations, no new signals, no new
-  layers.
+- Repository Intelligence MUST NOT import `internal/intelligence` (the aggregation
+  direction is one-way; this prevents an import cycle).
+- Repository Intelligence MUST NOT call the GitHub API or any acquisition backend.
+- Repository Intelligence MUST NOT emit a dimension conclusion not backed by
+  `Evidence()`.
+- Repository Intelligence MUST NOT approximate unobserved properties (e.g. LOC,
+  commit counts, CI presence) with weak proxies. Absent data is reported as
+  *unknown*, not guessed.

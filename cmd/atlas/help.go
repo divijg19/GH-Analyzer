@@ -12,8 +12,9 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "  atlas <command> [options]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Commands:")
-	fmt.Fprintln(w, "  analyze  Analyze a single GitHub profile")
-	fmt.Fprintln(w, "  build    Build a dataset from usernames")
+	fmt.Fprintln(w, "  analyze      Analyze a single GitHub profile")
+	fmt.Fprintln(w, "  intelligence Canonical Candidate Intelligence view of a profile")
+	fmt.Fprintln(w, "  build        Build a dataset from usernames")
 	fmt.Fprintln(w, "  query    Advanced signal-threshold query")
 	fmt.Fprintln(w, "  search   Discover developers by intent or expression")
 	fmt.Fprintln(w, "  inspect  Inspect a single profile in a dataset")
@@ -26,6 +27,8 @@ func printRootHelp(w io.Writer) {
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  atlas kamikuma")
 	fmt.Fprintln(w, "  atlas analyze --json kamikuma")
+	fmt.Fprintln(w, "  atlas intelligence divijg19")
+	fmt.Fprintln(w, "  atlas intelligence divijg19 --json")
 	fmt.Fprintln(w, "  atlas build user1 user2 --out dataset.json")
 	fmt.Fprintln(w, "  atlas query --preset strong --limit 5")
 	fmt.Fprintln(w, "  atlas search backend")
@@ -140,6 +143,23 @@ func printAnalyzeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  atlas analyze --json octocat")
 }
 
+func printIntelligenceHelp(w io.Writer) {
+	fmt.Fprintln(w, "Usage:")
+	fmt.Fprintln(w, "  atlas intelligence [--json] <username>")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Options:")
+	fmt.Fprintln(w, "  --json   Output the CandidateIntelligence object as JSON")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Description:")
+	fmt.Fprintln(w, "  Exposes the canonical Candidate Intelligence domain object for a user.")
+	fmt.Fprintln(w, "  This is the reference consumer: it serializes the deterministic semantic")
+	fmt.Fprintln(w, "  interpretation of the Profile without added presentation or interpretation.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Examples:")
+	fmt.Fprintln(w, "  atlas intelligence divijg19")
+	fmt.Fprintln(w, "  atlas intelligence divijg19 --json")
+}
+
 func printCommandHelp(command string, w io.Writer) error {
 	switch strings.ToLower(strings.TrimSpace(command)) {
 	case "analyze":
@@ -152,6 +172,8 @@ func printCommandHelp(command string, w io.Writer) error {
 		printSearchHelp(w)
 	case "inspect":
 		printInspectHelp(w)
+	case "intelligence":
+		printIntelligenceHelp(w)
 	case "dataset":
 		printDatasetHelp(w)
 	default:

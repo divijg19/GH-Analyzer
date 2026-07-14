@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
-	indexpkg "github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/intelligence"
 	"github.com/divijg19/Atlas/internal/projection"
 )
 
@@ -43,7 +46,12 @@ func runInspect(args []string) error {
 	if !found {
 		return fmt.Errorf("profile %q not found", username)
 	}
+	referenceTime := time.Now()
 	proj := projection.BuildInspectProjection(profile)
+	if ci, err := intelligence.BuildCandidateIntelligence(context.Background(), &profile, referenceTime); err == nil {
+		proj.Intelligence = projection.IntelligenceView(ci)
+	}
+	proj.RepositoryIntelligence = projection.RepositoryIntelligenceViews(profile.Repositories, referenceTime)
 	if *jsonOutput {
 		return writeJSON(proj)
 	}
@@ -52,12 +60,12 @@ func runInspect(args []string) error {
 	return nil
 }
 
-func findProfile(indexData indexpkg.Index, username string) (indexpkg.Profile, bool) {
+func findProfile(indexData index.Index, username string) (index.Profile, bool) {
 	for _, profile := range indexData.All() {
 		if strings.EqualFold(profile.Username, username) {
 			return profile, true
 		}
 	}
 
-	return indexpkg.Profile{}, false
+	return index.Profile{}, false
 }

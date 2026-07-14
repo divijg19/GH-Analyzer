@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/divijg19/Atlas/internal/acquisition"
+	"github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/intelligence"
 	"github.com/divijg19/Atlas/internal/projection"
 )
 
@@ -79,6 +81,9 @@ func parseAnalyzeArgs(args []string) (analyzeOptions, bool, error) {
 	return options, false, nil
 }
 
+// analyzeUser builds the AnalyzeProjection (signals, scores, top repositories)
+// and attaches the Candidate Intelligence view built from the same Profile.
+// Profile assembly uses the single canonical owner (index.BuildProfile).
 func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 	if strings.TrimSpace(username) == "" {
 		return projection.AnalyzeProjection{}, fmt.Errorf("missing GitHub username")
@@ -87,16 +92,28 @@ func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	repoDTOs, err := acquisition.NewClient().FetchRepos(ctx, username)
+	client := acquisition.NewClient()
+
+	// Existing projection path (signals, scores, top repositories).
+	repos, err := client.FetchReposNormalized(ctx, username)
 	if err != nil {
 		return projection.AnalyzeProjection{}, err
 	}
-
-	repos := acquisition.NormalizeRepos(repoDTOs)
 	proj, err := projection.BuildAnalyzeProjection(username, repos, time.Now())
 	if err != nil {
 		return projection.AnalyzeProjection{}, err
 	}
+
+	// Candidate Intelligence: canonical semantic interpretation of the Profile.
+	profile, err := index.BuildProfile(ctx, client, username, time.Now())
+	if err != nil {
+		return projection.AnalyzeProjection{}, err
+	}
+	ci, err := intelligence.BuildCandidateIntelligence(ctx, &profile, time.Now())
+	if err != nil {
+		return projection.AnalyzeProjection{}, err
+	}
+	proj.Intelligence = projection.IntelligenceView(ci)
 
 	return proj, nil
 }

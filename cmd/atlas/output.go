@@ -120,6 +120,12 @@ func printDetailedProjectionList(projections []projection.SearchProjection, star
 		for _, reason := range proj.Reasons {
 			fmt.Printf("   - %s\n", reason)
 		}
+		if len(proj.Intelligence) > 0 {
+			fmt.Println("   Intelligence:")
+			for _, dv := range proj.Intelligence {
+				fmt.Printf("   - %s: %s\n", dv.Name, dv.Summary)
+			}
+		}
 		fmt.Println()
 	}
 
@@ -252,6 +258,31 @@ func printInspectProjection(proj projection.InspectProjection) {
 			fmt.Printf("  %s:\n", group.Signal)
 			for _, item := range group.Items {
 				fmt.Printf("    - %s\n", item.Description)
+			}
+		}
+	}
+
+	if len(proj.Intelligence) > 0 {
+		fmt.Println()
+		fmt.Println("Intelligence:")
+		for _, dv := range proj.Intelligence {
+			fmt.Printf("  %s (%s):\n", dv.Name, dv.Level)
+			fmt.Printf("    %s\n", dv.Summary)
+			for _, g := range dv.Evidence {
+				for _, item := range g.Items {
+					fmt.Printf("      - %s\n", item.Description)
+				}
+			}
+		}
+	}
+
+	if len(proj.RepositoryIntelligence) > 0 {
+		fmt.Println()
+		fmt.Println("Repository Intelligence:")
+		for _, rv := range proj.RepositoryIntelligence {
+			fmt.Printf("  %s:\n", rv.Repository)
+			for _, dv := range rv.Dimensions {
+				fmt.Printf("    %s: %s\n", dv.Name, dv.Summary)
 			}
 		}
 	}

@@ -12,10 +12,12 @@ their canonical packages are:
 | Evidence | `internal/evidence` |
 | Evaluation | `internal/evaluation` |
 | Profile | `internal/profile`, `internal/index` |
+| Repository Intelligence | `internal/repositoryintelligence` (v0.9.0) |
+| Candidate Intelligence | `internal/intelligence` (v0.9.0; aggregates Repository Intelligence) |
 | Projection | `internal/projection` |
 
-`internal/signals` exists only as a deprecated compatibility shim and owns
-nothing.
+`internal/signals` was a deprecated compatibility shim that owned nothing; it
+was removed in v0.9.0 (zero consumers).
 
 The pipeline is strictly downward:
 
@@ -37,17 +39,21 @@ Facts                  facts.RepositoryFacts · facts.ActivityFacts
 Indicators             indicators.Signals → indicators.RawScore
     ↓
 Profile                index.Profile (assembles facts, indicators, metadata, contributions, activity)
+    ├─▶ Evaluation             internal/evaluation (overall score, penalty, confidence, ranking policy)
+    ├─▶ Repository Intelligence internal/repositoryintelligence (v0.9.0: deterministic semantic interpretation of each RepositoryVestige)
+    │       ↓
+    │   Candidate Intelligence  internal/intelligence (v0.9.0: aggregates Repository Intelligence across the portfolio)
+    └─ (direct Profile read retained only for pre-aggregation evidence)
     ↓
-Evaluation             internal/evaluation (overall score, penalty, confidence, ranking policy)
-    ↓
-Projection             internal/projection (presentation shapes)
+Projection             internal/projection (presentation shapes; consumes Evaluation output and CandidateIntelligence)
     ↓
 Consumers              cmd/atlas · cmd/server · web
 ```
 
 The conceptual model behind these layers — Observations, Facts, Indicators,
 Profile, Evaluation, Intelligence, Projection, Consumers — is defined in
-[`INTELLIGENCE.md`](./INTELLIGENCE.md).
+[`INTELLIGENCE.md`](./INTELLIGENCE.md). The v0.9.0 Candidate Intelligence layer
+is specified in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md).
 
 ---
 
@@ -257,6 +263,51 @@ present directly.
 **Key distinction:** Evaluation owns score interpretation. Engine owns search
 execution. Projection owns presentation. Presentation owns rendering.
 
+### Candidate Intelligence — `internal/intelligence` (v0.9.0)
+
+**Owns**
+
+- The deterministic semantic interpretation of a `Profile` (`CandidateIntelligence`)
+- Seven intelligence dimensions: Ownership, Delivery, Breadth, Maintenance, Project, Collaboration, Portfolio
+- Deterministic `Evidence` and `Summary` per dimension
+- The normative contract `Name() / Evidence() / Summary()` for every dimension
+
+**Never owns**
+
+- Acquisition, normalization, fact derivation, indicator calculation, or evaluation
+- Ranking, scoring, comparison, or presentation
+- Any dependency on GitHub, HTTP, GraphQL, REST, or DTOs
+- Introduction of information not already present in the `Profile` (see the
+  Information Invariant in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md))
+
+Candidate Intelligence is a pure synthesis layer. It consumes a resolved
+`Profile` and reorganizes existing deterministic knowledge into interpretable
+dimensions. Growth Intelligence is a **reserved** dimension (defined in the
+spec, not implemented in v0.9.0) pending historical snapshot storage. The full
+contract, per-dimension definitions, and certification criteria are normative
+in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md).
+
+### Repository Intelligence — `internal/repositoryintelligence` (v0.9.0)
+
+**Owns**
+
+- The deterministic semantic interpretation of a single `observations.RepositoryVestige` (`RepositoryIntelligence`)
+- Thirteen repository dimensions: Identity, Health, Maintenance, Delivery, Architecture, Technology, Community, Documentation, Quality, Complexity, Lifecycle, Governance, Risk
+- Deterministic `Evidence` and `Summary` per dimension, via the same `Name() / Evidence() / Summary()` contract as Candidate Intelligence
+
+**Never owns**
+
+- Acquisition, normalization, fact derivation (the `facts.RepositoryFacts` aggregate remains owned by `internal/facts`), indicator calculation, or evaluation
+- Aggregation across a portfolio — that is Candidate Intelligence's role
+- Any dependency on `internal/intelligence` (the dependency direction is one-way: Candidate Intelligence imports Repository Intelligence, never the reverse)
+- Introduction of information not already present in the `RepositoryVestige` (Information Invariant, [`REPOSITORY_INTELLIGENCE.md`](./REPOSITORY_INTELLIGENCE.md))
+
+Repository Intelligence is a pure synthesis layer computed per repository. It is
+the second interpretive layer and the building block Candidate Intelligence
+aggregates. The full contract, the thirteen dimension definitions, and the
+aggregation contract are normative in
+[`REPOSITORY_INTELLIGENCE.md`](./REPOSITORY_INTELLIGENCE.md).
+
 ### Engine — `internal/engine`
 
 **Owns**
@@ -299,8 +350,9 @@ re-shaped here; they are never recomputed.
 **Projection types:**
 
 - `AnalyzeProjection` — Deep-dive analysis (overall score, top repos, component scores)
-- `InspectProjection` — Raw data inspection (everything + evidence)
+- `InspectProjection` — Raw data inspection (everything + evidence + Candidate Intelligence + per-repository Repository Intelligence)
 - `SearchProjection` — Search results (username, score, confidence, signals, reasons)
+- `RepositoryIntelligenceView` — Per-repository intelligence view (thirteen dimensions), built via `internal/repositoryintelligence`
 
 ### Presentation — `cmd/atlas`, `cmd/server`, `web`
 
@@ -330,6 +382,7 @@ Before implementing any change, ask:
 - A measurement or indicator? → **Indicators**
 - Evidence or justification? → **Evidence**
 - The candidate aggregate? → **Profile**
+- A semantic interpretation of a Profile? → **Candidate Intelligence**
 - Score interpretation or confidence? → **Evaluation**
 - Search execution or filtering? → **Engine**
 - A view for a consumer? → **Projection**
@@ -419,4 +472,35 @@ and canonicalization with no new intelligence:
 - `internal/signals` became a pure compatibility shim with zero ownership.
 - Reduced public API surfaces to only what is consumed externally.
 - Aligned all normative documentation to frozen architecture.
+
+**v0.9.0 (Candidate Intelligence)** froze the first intelligence ontology as a
+deterministic semantic interpretation layer above `Profile`:
+
+- Introduced `docs/CANDIDATE_INTELLIGENCE.md` as the normative specification for
+  Candidate Intelligence.
+- Defined seven implemented dimensions (Ownership, Delivery, Breadth,
+  Maintenance, Project, Collaboration, Portfolio) and one reserved dimension
+  (Growth).
+- Established the Information Invariant: intelligence never introduces
+  information, only reorganizes knowledge already present in the `Profile`.
+- Defined the Dimension Contract (`Name()`, `Evidence()`, `Summary()`) and the
+  Evidence → Summary product separation.
+- Reframed GitFut as a research corpus that *validated* interpretation lenses;
+  Atlas owns the ontology. (Implementation in `internal/intelligence` follows
+  the spec in later phases.)
+
+**v0.9.0 (Repository Intelligence layer — restructuring)** introduced the second
+interpretive layer and reframed Candidate Intelligence to aggregate it:
+
+- Introduced `docs/REPOSITORY_INTELLIGENCE.md` as the normative specification for
+  the repository-domain intelligence layer.
+- Renamed the former `docs/REPOSITORY_INTELLIGENCE.md` (the v0.8.16 repository
+  facts/indicators spec) to `docs/REPOSITORY_FACTS.md`.
+- Implemented `internal/repositoryintelligence`: deterministic semantic
+  interpretation of a single `observations.RepositoryVestige` across thirteen
+  dimensions (Identity, Health, Maintenance, Delivery, Architecture, Technology,
+  Community, Documentation, Quality, Complexity, Lifecycle, Governance, Risk).
+- Candidate Intelligence now aggregates `RepositoryIntelligence` across the
+  portfolio (see `docs/CANDIDATE_INTELLIGENCE.md` §7) instead of reading
+  `RepositoryVestige` facts directly for portfolio dimensions.
 

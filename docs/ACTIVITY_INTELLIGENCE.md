@@ -204,7 +204,7 @@ Every `ActivityFacts` field must satisfy these gates:
 3. Derivation is deterministic (same inputs → same outputs).
 4. Formula is documented in this specification.
 5. Edge cases are documented in this specification.
-6. Dedicated unit tests exist in `internal/signals/activity_test.go` (legacy).
+6. Dedicated unit tests exist in `internal/facts` (canonical activity-fact tests).
 7. No duplicate derivation exists in `RepositoryFacts` or elsewhere.
 8. Downstream consumers (`Profile`, `InspectProjection`) remain unchanged.
 

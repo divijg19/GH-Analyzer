@@ -10,6 +10,7 @@ import (
 
 	"github.com/divijg19/Atlas/internal/engine"
 	"github.com/divijg19/Atlas/internal/evaluation"
+	"github.com/divijg19/Atlas/internal/intelligence"
 	"github.com/divijg19/Atlas/internal/projection"
 	searchpkg "github.com/divijg19/Atlas/internal/search"
 )
@@ -111,6 +112,9 @@ func runSearch(args []string) error {
 			evaluation.ClassifyConfidence(result.Score),
 			result.Reasons,
 		)
+		if ci, err := intelligence.BuildCandidateIntelligence(context.Background(), &result.Profile, time.Now()); err == nil {
+			projections[i].Intelligence = projection.IntelligenceView(ci)
+		}
 	}
 
 	if *jsonOutput {

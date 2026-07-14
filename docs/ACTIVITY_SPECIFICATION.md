@@ -62,7 +62,7 @@ never leave `internal/acquisition`. The model is designed for future providers.
 ### Current Package Placement
 
 The v0.8.17 implementation colocates activity observations and activity facts
-with `internal/signals` for historical continuity. That is an implementation
+with `internal/facts` (canonical home for facts). That is an implementation
 detail, not
 an architectural statement about long-term ownership.
 

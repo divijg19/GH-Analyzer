@@ -13,6 +13,11 @@ type SearchProjection struct {
 	Confidence evaluation.Confidence `json:"confidence"`
 	Signals    map[string]float64    `json:"signals"`
 	Reasons    []string              `json:"reasons"`
+
+	// Intelligence carries concise dimension summaries used to explain why a
+	// candidate matched, selected from CandidateIntelligence (never computed
+	// by search).
+	Intelligence []DimensionView `json:"intelligence,omitempty"`
 }
 
 // BuildSearchProjection creates a search view from presentation-ready data.

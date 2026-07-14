@@ -19,6 +19,14 @@ type InspectProjection struct {
 	Contributions *contributions.Summary   `json:"contributions,omitempty"`
 	ActivityFacts *facts.ActivityFacts     `json:"activity_facts,omitempty"`
 	Evidence      []evidence.EvidenceGroup `json:"evidence"`
+
+	// Intelligence is the Candidate Intelligence view, built from the same
+	// Profile. Inspect surfaces its Evidence (see printInspectProjection).
+	Intelligence []DimensionView `json:"intelligence,omitempty"`
+
+	// RepositoryIntelligence is the per-repository intelligence view, one entry
+	// per repository in the Profile. Inspect is the deep-dive consumer.
+	RepositoryIntelligence []RepositoryIntelligenceView `json:"repository_intelligence,omitempty"`
 }
 
 // BuildInspectProjection creates a raw data view from a Profile.

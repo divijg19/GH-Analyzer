@@ -19,6 +19,10 @@ type AnalyzeProjection struct {
 	Signals  indicators.RawScore `json:"signals"`
 	TopRepos []topRepository     `json:"top_repos"`
 	Overall  int                 `json:"overall"`
+
+	// Intelligence is the Candidate Intelligence view, built from the same
+	// Profile. Projection renders it; it never recomputes meaning.
+	Intelligence []DimensionView `json:"intelligence,omitempty"`
 }
 
 // BuildAnalyzeProjection creates analysis-ready data from repos.

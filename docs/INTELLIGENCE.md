@@ -204,7 +204,11 @@ Signals are **not**:
 **Key distinction:**
 
 - **Profile** answers: *What do we know about this candidate?*
-- **Intelligence** (future) answers: *What does that knowledge mean?*
+- **Intelligence** answers: *What does that knowledge mean?*
+
+The first realization of Intelligence is Candidate Intelligence (v0.9.0),
+specified normatively in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md)
+as the deterministic semantic interpretation of a `Profile`.
 
 Profile is not:
 - A persistence format
@@ -337,7 +341,7 @@ reflect the current frozen architecture.
 | **v0.8.15** | Deterministic Observation Acquisition | Observation specification, GitHub GraphQL acquisition, deterministic merge, expanded RepositoryVestige |
 | **v0.8.16** | Repository Facts | Expanded RepositoryFacts with deterministic derivations |
 | **v0.8.17** | Activity Intelligence | ActivityObservation model, ActivityFacts, Profile integration |
-| **v0.9.0+** | Candidate Intelligence | All intelligence domains converge toward candidate assessment |
+| **v0.9.0** | Candidate Intelligence | Deterministic semantic interpretation of a Profile; seven dimensions + reserved Growth (see [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md)) |
 
 ### Release history (archival)
 
