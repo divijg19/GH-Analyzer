@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/divijg19/Atlas/internal/evidence"
+	"github.com/divijg19/Atlas/internal/provenance"
 )
 
 func levelFromRatio(ratio, high, moderate float64) Level {
@@ -23,8 +24,18 @@ func factItem(description string, value interface{}) evidence.Evidence {
 	return evidence.Evidence{Kind: "fact", Description: description, Value: fmt.Sprintf("%v", value)}
 }
 
-func group(signal string, items ...evidence.Evidence) evidence.EvidenceGroup {
-	return evidence.EvidenceGroup{Signal: signal, Items: items}
+// groupFrom builds an evidence group whose provenance references the given
+// repository observation fields. Repository Intelligence consumes observations
+// directly, so its provenance is observation-level: it names the exact vestige
+// fields each dimension interpreted.
+func groupFrom(rc repoContext, signal string, fields []string, items ...evidence.Evidence) evidence.EvidenceGroup {
+	return evidence.EvidenceGroup{
+		Signal: signal,
+		Items:  items,
+		Provenance: provenance.Chain{
+			Observations: provenance.RepositoryObservations(rc.vestige.ObservationID(), fields...),
+		},
+	}
 }
 
 func daysSince(t time.Time, reference time.Time) int {

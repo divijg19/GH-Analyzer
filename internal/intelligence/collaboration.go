@@ -59,7 +59,7 @@ func buildCollaboration(repos []repositoryintelligence.RepositoryIntelligence) C
 	}
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("collaboration",
+		groupFrom(repos, "collaboration", []string{"community"},
 			factItem("total collaborators", collaborators),
 			factItem("repositories with collaborators", withCollab),
 			factItem("total forks", forks),

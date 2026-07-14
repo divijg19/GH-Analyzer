@@ -12,12 +12,12 @@ import (
 // Intelligence.
 type ProjectIntelligence struct {
 	dimensionBase
-	Level         Level
-	TotalSize     int
-	MatureRepos   int
-	EarlyRepos    int
+	Level          Level
+	TotalSize      int
+	MatureRepos    int
+	EarlyRepos     int
 	DistinctStacks int
-	Confidence    Confidence
+	Confidence     Confidence
 }
 
 func buildProject(repos []repositoryintelligence.RepositoryIntelligence) ProjectIntelligence {
@@ -65,7 +65,7 @@ func buildProject(repos []repositoryintelligence.RepositoryIntelligence) Project
 	}
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("project",
+		groupFrom(repos, "project", []string{"architecture", "lifecycle", "technology"},
 			factItem("total size (KB)", totalSize),
 			factItem("mature repositories", mature),
 			factItem("early repositories", early),

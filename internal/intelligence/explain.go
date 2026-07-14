@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/divijg19/Atlas/internal/evidence"
+	"github.com/divijg19/Atlas/internal/provenance"
+	"github.com/divijg19/Atlas/internal/repositoryintelligence"
 )
 
 func levelFromRatio(ratio, high, moderate float64) Level {
@@ -27,4 +29,32 @@ func factItem(description string, value interface{}) evidence.Evidence {
 
 func group(signal string, items ...evidence.Evidence) evidence.EvidenceGroup {
 	return evidence.EvidenceGroup{Signal: signal, Items: items}
+}
+
+// repoRefs records which repositories contributed to a portfolio conclusion and,
+// for each, which repository intelligence dimensions were consumed. Aggregation
+// reorganizes knowledge; it never flattens it. Following a RepositoryRef back to
+// the repository intelligence view yields that repository's full provenance
+// chain without duplicating it here.
+func repoRefs(repos []repositoryintelligence.RepositoryIntelligence, dims ...string) []provenance.RepositoryRef {
+	if len(repos) == 0 || len(dims) == 0 {
+		return nil
+	}
+	refs := make([]provenance.RepositoryRef, 0, len(repos)*len(dims))
+	for _, r := range repos {
+		for _, d := range dims {
+			refs = append(refs, provenance.RepositoryRef{Repository: r.Repository, Dimension: d})
+		}
+	}
+	return refs
+}
+
+// groupFrom builds a candidate evidence group whose provenance names the
+// contributing repositories and the repository dimensions consumed.
+func groupFrom(repos []repositoryintelligence.RepositoryIntelligence, signal string, dims []string, items ...evidence.Evidence) evidence.EvidenceGroup {
+	return evidence.EvidenceGroup{
+		Signal:     signal,
+		Items:      items,
+		Provenance: provenance.Chain{Repositories: repoRefs(repos, dims...)},
+	}
 }

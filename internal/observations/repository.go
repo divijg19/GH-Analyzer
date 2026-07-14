@@ -42,3 +42,11 @@ type RepositoryVestige struct {
 	Size              int  `json:"size"`
 	DiscussionEnabled bool `json:"discussion_enabled"`
 }
+
+// ObservationID returns the deterministic, Atlas-owned identity of this
+// repository observation. Identity is constructed during normalization from the
+// normalized repository name, which is unique within a candidate's portfolio and
+// stable across executions. GitHub provides acquisition; Atlas owns identity.
+func (v RepositoryVestige) ObservationID() string {
+	return v.Name
+}

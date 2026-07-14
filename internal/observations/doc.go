@@ -1,11 +1,10 @@
 // Package observations owns Atlas' canonical observation model.
 //
-// It defines immutable observations acquired from external providers:
-// RepositoryVestige (repository state), ActivityObservation (temporal
-// activity), ActivityKind (observation type enumeration).
+// Consumes: nothing. Observations are the lowest domain layer; they are
+// acquired externally and normalized into canonical form before entry.
 //
-// Observations never derive facts, compute indicators, evaluate candidates,
-// or perform presentation.
+// Produces: RepositoryVestige (repository state), ActivityObservation
+// (temporal activity), and ActivityKind (observation type).
 //
-// Consumed by: facts, indicators, acquisition, projection, index, evidence.
+// Never owns: facts derivation, indicators, evaluation, or presentation.
 package observations

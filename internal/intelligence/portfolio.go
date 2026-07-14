@@ -14,11 +14,11 @@ import (
 // metadata.
 type PortfolioIntelligence struct {
 	dimensionBase
-	Level        Level
+	Level           Level
 	RepositoryCount int
-	AtRiskRepos  int
-	AccountAgeDays int
-	Confidence   Confidence
+	AtRiskRepos     int
+	AccountAgeDays  int
+	Confidence      Confidence
 }
 
 func buildPortfolio(repos []repositoryintelligence.RepositoryIntelligence, meta *profile.UserMetadata, referenceTime time.Time) PortfolioIntelligence {
@@ -58,7 +58,7 @@ func buildPortfolio(repos []repositoryintelligence.RepositoryIntelligence, meta 
 		dim.Confidence = ConfidenceHigh
 	}
 	dim.evidence = []evidence.EvidenceGroup{
-		group("portfolio",
+		groupFrom(repos, "portfolio", []string{"risk"},
 			factItem("repositories", total),
 			factItem("at-risk repositories", atRisk),
 			factItem("account age (days)", dim.AccountAgeDays),

@@ -12,7 +12,7 @@ import (
 // Intelligence.
 type DocumentationIntelligence struct {
 	dimensionBase
-	Level          Level
+	Level           Level
 	DocumentedRatio float64
 	DocumentedRepos int
 	LicensedRepos   int
@@ -52,7 +52,7 @@ func buildDocumentation(repos []repositoryintelligence.RepositoryIntelligence) D
 	dim.Level = levelFromRatio(ratio, 0.6, 0.3)
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("documentation",
+		groupFrom(repos, "documentation", []string{"documentation"},
 			factItem("documented repositories", documented),
 			factItem("repositories", total),
 			factItem("licensed repositories", licensed),

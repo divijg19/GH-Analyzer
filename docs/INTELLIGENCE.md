@@ -1,17 +1,18 @@
 # Atlas Intelligence Ontology
 
-This document is the canonical reference for the Atlas Intelligence Ontology.
-It defines every concept Atlas understands, following one guiding principle:
+The Atlas Intelligence Ontology defines every concept Atlas understands,
+following one guiding principle:
 
-> **Atlas observes Observations. Atlas derives Facts. Atlas measures Indicators. Atlas performs Evaluation. Atlas projects Intelligence.**
+> **Atlas observes Observations. Atlas derives Facts. Atlas measures Indicators.
+> Atlas performs Evaluation. Atlas projects Intelligence.**
 
-Where `ARCHITECTURE.md` answers *"which package owns this?"*, this document
-answers *"what is the concept?"* and *"what are its invariants?"*
+Where [`ARCHITECTURE.md`](./ARCHITECTURE.md) defines layer ownership, this
+document defines the concepts and their invariants.
 
 The model is a strictly downward pipeline. Each stage transforms the previous
 stage's output into a richer, still-deterministic representation. Nothing is
-ever inferred probabilistically: given the same inputs, Atlas always produces
-the same intelligence.
+inferred probabilistically: given the same inputs, Atlas always produces the
+same intelligence.
 
 ---
 
@@ -48,230 +49,145 @@ Consumers
 
 ## Layer Definitions
 
-### Transport — `internal/github`
+### Transport
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Owns HTTP communication with external APIs (currently GitHub). |
-| **Owner** | `internal/github` |
-| **Inputs** | HTTP request parameters (URL, headers, auth). |
-| **Outputs** | Raw JSON byte payloads. |
+| **Purpose** | Communication with external providers. |
+| **Inputs** | Request parameters. |
+| **Outputs** | Raw provider payloads. |
 | **Invariants** | Never parses domain types. Never interprets responses. |
 | **Prohibited** | Domain logic, normalization, caching. |
 
----
-
-### Acquisition — `internal/acquisition`
+### Acquisition
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Fetches external data via REST and GraphQL; produces DTOs that mirror the API schema. |
-| **Owner** | `internal/acquisition` |
-| **Inputs** | Username, owner+repo name, search query, context. |
-| **Outputs** | `RepoDTO` (REST), `graphQLRepo` (GraphQL), `UserDTO`, `ContributionsDTO`. |
-| **Invariants** | DTOs are pure data — no intelligence, no computation. REST and GraphQL are acquisition mechanisms only, not intelligence layers. |
+| **Purpose** | Fetches external data and produces representations that mirror the provider schema. |
+| **Inputs** | Candidate and repository identifiers, search queries. |
+| **Outputs** | Provider-shaped representations. |
+| **Invariants** | Representations are pure data — no intelligence, no computation. Acquisition mechanisms are not intelligence layers. |
 | **Prohibited** | Domain model construction, scoring, evaluation, merge policy. |
 
----
-
-### Normalization — `internal/acquisition/normalize.go`
+### Normalization
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Maps DTOs to domain vestiges. The boundary between "what GitHub returns" and "what Atlas knows." |
-| **Owner** | `internal/acquisition` |
-| **Inputs** | `RepoDTO` (REST), `graphQLRepo` (GraphQL), `UserDTO`, `ContributionsDTO`. |
-| **Outputs** | `observations.RepositoryVestige` (full from REST, partial from GraphQL), `profile.UserMetadata`, `contributions.Summary`. |
-| **Invariants** | One-to-one: one DTO → one vestige. No aggregation, no derivation, no omitting fields without documentation. Both REST and GraphQL DTOs pass through normalization. |
-| **Prohibited** | Aggregation, scoring, evaluation, filtering, merge of multiple acquisition sources. |
-
----
+| **Purpose** | Maps provider representations to canonical observations. The boundary between what the provider returns and what Atlas knows. |
+| **Inputs** | Provider-shaped representations. |
+| **Outputs** | Repository observations, account metadata, contribution summaries. |
+| **Invariants** | One representation maps to one observation. No aggregation, no derivation, no silent field loss. |
+| **Prohibited** | Aggregation, scoring, evaluation, filtering, merge of multiple sources. |
 
 ### Observations
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | The canonical raw observation of a software development artifact. Every acquisition backend (REST, GraphQL, GitFut, local git) produces vestiges; Atlas never acquires from them directly. |
-| **Owner** | `internal/observations` (repository and activity observations), `internal/profile` (metadata), `internal/contributions` (summary). |
+| **Purpose** | The canonical raw observation of a software development artifact. |
 | **Inputs** | Normalized output from acquisition. |
-| **Outputs** | `observations.RepositoryVestige`, `observations.ActivityObservation`, `profile.UserMetadata`, `contributions.Summary`. |
-| **Invariants** | Vestiges are observables, not computations. Fields are organized into observation domains: Identity, Ownership, Timeline, Technology, Maintenance, Structure. ActivityObservation captures temporal developer activity. |
+| **Outputs** | Repository observations, activity observations, account metadata, contribution summaries. |
+| **Invariants** | Observations are observables, not computations. |
 | **Prohibited** | Derivation, aggregation, scoring, evaluation. |
 
-**Observation domains of `RepositoryVestige`:**
+A repository observation (`RepositoryVestige`) organizes its fields into
+observation domains: Identity, Ownership, Timeline, Technology, Maintenance,
+Structure. An activity observation (`ActivityObservation`) captures temporal
+developer activity by kind. The complete catalogue, ownership, and acquisition
+policy are normative in
+[`OBSERVATION_SPECIFICATION.md`](./OBSERVATION_SPECIFICATION.md) and
+[`ACTIVITY_SPECIFICATION.md`](./ACTIVITY_SPECIFICATION.md).
 
-- **Identity** — Name, Visibility, Archived, Template
-- **Ownership** — Fork, ParentRepository, CollaboratorCount
-- **Timeline** — CreatedAt, UpdatedAt, PushedAt, ReleaseCount, LatestReleaseAt
-- **Technology** — License, Topics, DefaultBranch, DefaultBranchProtected, LanguageDistribution
-- **Maintenance** — OpenIssues, Stars, Forks, Watchers, PullRequestCount
-- **Structure** — Size, DiscussionEnabled
-
-**`ActivityObservation` kinds** (v0.8.17):
-
-- **Commit** — commit contributions within a time window
-- **PullRequest** — PR contributions within a time window
-- **Review** — code review contributions within a time window
-- **Issue** — issue contributions within a time window
-- **Discussion** — discussion contributions (deferred)
-- **Release** — release contributions (deferred)
-- **ActiveDay** — calendar activity metric
-- **ContributionByRepo** — per-repository contribution breakdown
-- **Aggregate** — lifetime/private contribution sums
-
-**Future vestige families** (documented placeholders, no implementation):
-
-- `CommitVestige` (individual commits)
-- `PullRequestVestige` (individual PRs)
-- `ReviewVestige` (individual reviews)
-- `ReleaseVestige` (individual releases)
-- `ContributorVestige`
-- `OrganizationVestige`
-
----
-
-### Facts — `facts.RepositoryFacts`, `facts.ActivityFacts`
+### Facts
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Deterministic, evidence-backed aggregates computed from vestiges. Facts answer *"what do we know?"* without interpretation. |
-| **Owner** | `internal/facts`. |
-| **Inputs** | `[]observations.RepositoryVestige`. |
-| **Outputs** | `facts.RepositoryFacts`. |
-| **Invariants** | Purely derivable from vestiges: given the same vestiges, identical facts. Never fetch, never observe, never evaluate. |
-| **Prohibited** | Observation (I/O), scoring, evaluation, confidence. |
+| **Purpose** | Deterministic aggregates computed from observations. Facts answer *"what do we know?"* without interpretation. |
+| **Inputs** | Repository observations, activity observations. |
+| **Outputs** | Repository facts, activity facts. |
+| **Invariants** | Purely derivable from observations: given the same observations, identical facts. Never fetch, never observe, never evaluate. |
+| **Prohibited** | Acquisition, scoring, evaluation, confidence. |
 
-**Fact families**:
+The complete fact catalogue and every derivation formula are normative in
+[`REPOSITORY_FACTS.md`](./REPOSITORY_FACTS.md) and
+[`ACTIVITY_INTELLIGENCE.md`](./ACTIVITY_INTELLIGENCE.md).
 
-| Fact Family | Status | Fields |
-|-------------|--------|--------|
-| `RepositoryFacts` | ✅ Implemented | TotalRepos, OriginalRepos, ForkRepos, RecentRepos, DeepRepos, ValidRepos, ValidOriginalRepos, LargestRepoSize, LatestActivity, ArchivedRepos, TemplateRepos, PublicRepos, PrivateRepos, LicensedRepos, TotalStars, TotalForks, TotalWatchers, TotalOpenIssues, TotalTopics, OldestCreated, NewestCreated, MaxRepoStars, MeanRepoStars, LanguageCount, RankedLanguages, TotalReleases, LatestReleaseAt, ReleasedRepos, TotalPullRequests, TotalCollaborators, ProtectedBranchRepos, DiscussionRepos, ForkRatio, LicensedRatio, ArchivedRatio, PortfolioAgeDays, NewestRepoAgeDays, DaysSinceLatestRelease, MeanRepoSize, TopicBreadth |
-| `ActivityFacts` | ✅ Implemented (v0.8.17) | RecentCommits, RecentPullRequests, RecentReviews, RecentIssues, RecentPrivate, LifetimeCommits, LifetimePullRequests, LifetimeReviews, LifetimeIssues, LifetimePrivate, LifetimeTotal, ContributionBreadth, RepositoryBreadth, ActiveDays, ActivityCadence, ContributionFrequency, RepositoryDepth, YearCount, CommitCadence, ContributionRecency |
-
----
-
-### Indicators — `indicators.Signals`, `indicators.RawScore`
+### Indicators
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Normalized measurements derived from facts. Signals quantify observations: ownership, consistency, depth, activity. |
-| **Owner** | `internal/indicators`. |
-| **Inputs** | `facts.RepositoryFacts`. |
-| **Outputs** | `indicators.Signals` (four float64 values in [0, 1]), `indicators.RawScore` (three component integer scores in [0, 100]). |
-| **Invariants** | Deterministic, reproducible, bounded [0,1], explainable, fact-derived. Signals measure facts — they never observe vestiges directly. |
-| **Prohibited** | I/O, aggregation, scoring beyond measurement, confidence, ranking. |
+| **Purpose** | Normalized measurements derived from facts. Indicators quantify observations. |
+| **Inputs** | Repository facts. |
+| **Outputs** | Four measurements in [0, 1]; three component scores in [0, 100]. |
+| **Invariants** | Deterministic, reproducible, bounded, explainable, fact-derived. Indicators measure facts — they never read observations directly. |
+| **Prohibited** | Acquisition, aggregation, scoring beyond measurement, confidence, ranking. |
 
-**Current signals:**
+The four measurements:
 
-| Signal | Range | Derives From |
-|-----------|-------|--------------|
-| `Ownership` | [0, 1] | `ValidOriginalRepos / ValidRepos` |
-| `Consistency` | [0, 1] | `RecentRepos / max(10, OriginalRepos)` |
-| `Depth` | [0, 1] | `DeepRepos / max(5, OriginalRepos)` |
-| `Activity` | {0.1, 0.4, 0.7, 1.0} | Time since `LatestActivity` |
+| Measurement | Range | Derives From |
+|-------------|-------|--------------|
+| Ownership | [0, 1] | share of valid repositories that are original |
+| Consistency | [0, 1] | share of original repositories with recent activity |
+| Depth | [0, 1] | share of original repositories that are substantial |
+| Activity | {0.1, 0.4, 0.7, 1.0} | recency of latest activity |
 
-**Philosophy:**
+An indicator is never a heuristic guess, an AI opinion, a reputation score, a
+popularity metric, or an evaluation judgment.
 
-Signals must satisfy:
-
-- **Deterministic** — same facts → same indicators
-- **Reproducible** — independent computation yields identical results
-- **Bounded** — always in [0, 1]
-- **Explainable** — every value traces to specific facts
-- **Fact-derived** — indicators never read observations directly
-
-Signals are **not**:
-
-- Heuristic guesses
-- AI or ML opinions
-- Reputation scores
-- Popularity metrics
-- Evaluation judgments
-
----
-
-### Profile — `index.Profile`
+### Profile
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Atlas' complete assembled understanding of a candidate. Profile is context — not intelligence. It aggregates repository facts, activity facts, indicators, metadata, and contributions into a single canonical record. |
-| **Owner** | `internal/index`. |
-| **Inputs** | `facts.RepositoryFacts`, `facts.ActivityFacts`, `indicators.Signals`, `profile.UserMetadata`, `contributions.Summary`. |
-| **Outputs** | `index.Profile` (the assembled candidate state before evaluation). |
-| **Invariants** | Profile is assembled, not interpreted. It is the single source of truth for what Atlas knows about a candidate before evaluation. |
-| **Prohibited** | Scoring, confidence, ranking, presentation, persistence concerns. |
-
-**Key distinction:**
+| **Purpose** | Atlas's complete assembled understanding of a candidate. Profile is context, not intelligence. |
+| **Inputs** | Repository facts, activity facts, indicators, account metadata, contribution summaries. |
+| **Outputs** | The assembled candidate aggregate. |
+| **Invariants** | Profile is assembled, not interpreted. It is the single source of truth for what Atlas knows about a candidate before interpretation. |
+| **Prohibited** | Scoring, confidence, ranking, presentation, persistence. |
 
 - **Profile** answers: *What do we know about this candidate?*
 - **Intelligence** answers: *What does that knowledge mean?*
 
-The first realization of Intelligence is Candidate Intelligence (v0.9.0),
-specified normatively in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md)
-as the deterministic semantic interpretation of a `Profile`.
+The interpretation of a Profile is Candidate Intelligence, normative in
+[`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md); the interpretation of
+a single repository is Repository Intelligence, normative in
+[`REPOSITORY_INTELLIGENCE.md`](./REPOSITORY_INTELLIGENCE.md).
 
-Profile is not:
-- A persistence format
-- A presentation view
-- An evaluation result
-- An intelligence conclusion
-
----
-
-### Evaluation — `internal/evaluation`
+### Evaluation
 
 | Attribute | Definition |
 |-----------|------------|
 | **Purpose** | Score interpretation, confidence classification, penalty application, and ranking policy. Evaluation owns the transition from "what we know" to "how to interpret it." |
-| **Owner** | `internal/evaluation`. |
-| **Inputs** | `indicators.RawScore`, repository count, `index.Profile.Signals`. |
-| **Outputs** | `int` (overall score 0–100), `evaluation.RankingPolicy.Score`, confidence classification. |
+| **Inputs** | Component scores, repository count, indicators. |
+| **Outputs** | An overall score, a ranking score, a confidence classification. |
 | **Invariants** | Never observes, never measures, never aggregates. Only interprets. |
-| **Prohibited** | I/O, vestige observation, fact derivation, indicator measurement, presentation. |
+| **Prohibited** | Acquisition, observation, fact derivation, measurement, presentation. |
 
-**Owns:**
-
-- `OverallScore` — weighted sum of component scores (ownership 0.3, consistency 0.4, depth 0.3)
-- `ApplySmallSamplePenalty` — down-weights evaluations with <3 repositories
-- `ClassifyConfidence` — repo-count → {high, moderate, low}
-- `RankingPolicy` — type consumed by engine and projection for ordering
-
----
-
-### Engine — `internal/engine`
+### Engine
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Search query execution, candidate filtering, matching, ordering, and ranking. Engine is the orchestration layer between stored profiles and search consumers. |
-| **Owner** | `internal/engine`. |
-| **Inputs** | `index.Index`, `engine.Query`, `evaluation.RankingPolicy`. |
-| **Outputs** | `[]engine.Result` (filtered and ordered candidates). |
-| **Invariants** | Pure computation: no I/O, no acquisition, no vestige production. |
-| **Prohibited** | I/O, scoring policy, presentation, evaluation. |
+| **Purpose** | Search query execution, candidate filtering, matching, and ordering. |
+| **Inputs** | The candidate index, a query, a ranking policy. |
+| **Outputs** | Filtered and ordered candidates. |
+| **Invariants** | Pure computation: no acquisition, no observation. |
+| **Prohibited** | Acquisition, scoring policy, presentation, evaluation. |
 
----
-
-### Projection — `internal/projection`
+### Projection
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Consumer-shaped, read-only, deterministic views of the domain. Projection is the terminal transformation before presentation — it reshapes, never recomputes. |
-| **Owner** | `internal/projection`. |
-| **Inputs** | `index.Profile`, `evaluation` outputs. |
-| **Outputs** | `AnalyzeProjection`, `InspectProjection`, `SearchProjection`. |
-| **Invariants** | No computation beyond reshaping and ordering. No business logic. |
-| **Prohibited** | Scoring, evaluation, confidence, acquisition, fact derivation, indicator measurement. |
+| **Purpose** | Consumer-shaped, read-only, deterministic views of the domain. Projection reshapes, never recomputes. |
+| **Inputs** | The Profile and evaluation outputs. |
+| **Outputs** | Consumer-facing views. |
+| **Invariants** | No computation beyond reshaping and ordering. |
+| **Prohibited** | Scoring, evaluation, confidence, acquisition, fact derivation, measurement. |
 
----
-
-### Consumers — `cmd/atlas`, `cmd/server`, `web`
+### Consumers
 
 | Attribute | Definition |
 |-----------|------------|
-| **Purpose** | Presentation surfaces that render intelligence for human consumption. |
-| **Owner** | `cmd/atlas` (CLI), `cmd/server` (HTTP API), `web` (UI). |
+| **Purpose** | Presentation surfaces that render intelligence for consumption. |
 | **Inputs** | Projections. |
-| **Outputs** | CLI output, JSON responses, web pages. |
+| **Outputs** | Command-line output, API responses, web pages. |
 | **Invariants** | Format only; never derive. |
 | **Prohibited** | Any derivation of facts, indicators, scores, rankings, or projections. |
 
@@ -279,18 +195,17 @@ Profile is not:
 
 ## Intelligence Domains
 
-Atlas organizes intelligence into six domains. Each domain owns a family of
-vestiges, facts, and eventually indicators. No implementation exists beyond
-`Repository` — the remaining five are documented ownership boundaries.
+Atlas currently defines two intelligence domains: **Repository** and
+**Activity**. Each owns a family of observations and facts.
 
-| Domain | Vestige Families | Fact Families | Signal Families | Status |
-|--------|-----------------|---------------|-------------------|--------|
-| **Repository** | `RepositoryVestige` | `RepositoryFacts` | Ownership, Consistency, Depth, Activity | ✅ Active |
-| **Activity** | `ActivityObservation` | `ActivityFacts` | *(future)* | ✅ Active (v0.8.17) |
-| **Technology** | *(future)* | *(future)* | *(future)* | 📝 Documented |
-| **Behaviour** | *(future)* | *(future)* | *(future)* | 📝 Documented |
-| **Collaboration** | *(future)* | *(future)* | *(future)* | 📝 Documented |
-| **Career** | *(future)* | *(future)* | *(future)* | 📝 Documented |
+| Domain | Observations | Facts | Measurements |
+|--------|--------------|-------|--------------|
+| Repository | repository observations | repository facts | Ownership, Consistency, Depth, Activity |
+| Activity | activity observations | activity facts | — |
+
+Atlas intentionally does not define Technology, Behaviour, Collaboration, or
+Career as distinct domains: their knowledge is either owned by the Repository and
+Activity domains or is not yet observable deterministically.
 
 ---
 
@@ -298,58 +213,22 @@ vestiges, facts, and eventually indicators. No implementation exists beyond
 
 Every stage of the intelligence model is governed by the same principles:
 
-- **Deterministic** — identical inputs always yield identical output. No
-  randomness, no clock-dependent results in scored paths (the activity signal
-  is deterministic *given a reference time*; see the determinism note below).
-- **Explainable** — every score can be traced to the facts and weights that
+- **Deterministic** — identical inputs always yield identical output. Every
+  time-dependent conclusion is deterministic given an explicit reference time.
+- **Explainable** — every conclusion traces to the facts and weights that
   produced it.
 - **Composable** — stages stack cleanly; each consumes only the output of the
   stage above it.
-- **Observable** — intermediate stages are inspectable (`InspectProjection`
-  exposes raw vestiges, facts, and signals).
-- **Inspectable** — there is no "black box"; the full pipeline can be dumped.
-- **Evidence-backed** — conclusions reference the observations that support
-  them.
-- **Layer-owned** — each transformation has exactly one owning package.
-- **Transport-independent** — intelligence does not depend on HTTP, the GitHub
-  API, or any transport.
-- **Presentation-independent** — intelligence does not depend on CLI, JSON, or
-  web rendering.
+- **Inspectable** — there is no black box; the full pipeline is observable.
+- **Evidence-backed** — every conclusion carries provenance naming the
+  indicators, facts, and observations it consumed, so any conclusion can be
+  traced end-to-end. See [`PROVENANCE.md`](./PROVENANCE.md).
+- **Layer-owned** — each transformation has exactly one owner.
+- **Transport-independent** — intelligence does not depend on any transport or
+  provider.
+- **Presentation-independent** — intelligence does not depend on any consumer
+  surface.
 
----
-
-## Determinism Note
-
-All derived computations accept an explicit `referenceTime` parameter. The
-`activity` indicator is deterministic given the same reference time, removing
-any hidden dependency on the system clock. See `facts.FromRepos`,
-`indicators.ExtractSignals`, and `indicators.ExtractSignalsFromFacts`.
-
----
-
-## Historical Evolution
-
-Legacy terminology (e.g. `signals.*` as an umbrella package, "Signal Expansion"
-as a roadmap milestone) may appear below for historical accuracy but does not
-reflect the current frozen architecture.
-
-### Roadmap (archival)
-
-| Version | Theme | Scope |
-|---------|-------|-------|
-| **v0.8.14** | Intelligence Ontology | Vocabulary freeze, RepositoryVestige, RepositoryFacts, documentation, certification |
-| **v0.8.15** | Deterministic Observation Acquisition | Observation specification, GitHub GraphQL acquisition, deterministic merge, expanded RepositoryVestige |
-| **v0.8.16** | Repository Facts | Expanded RepositoryFacts with deterministic derivations |
-| **v0.8.17** | Activity Intelligence | ActivityObservation model, ActivityFacts, Profile integration |
-| **v0.9.0** | Candidate Intelligence | Deterministic semantic interpretation of a Profile; seven dimensions + reserved Growth (see [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md)) |
-
-### Release history (archival)
-
-- **v0.8.13** — Rebranded GH-Analyzer → Atlas; consolidated Evaluation.
-- **v0.8.14** — Intelligence Ontology release. Canonical vocabulary,
-  layer definitions, observation domains.
-- **v0.8.15** — Deterministic Observation Acquisition release. GraphQL,
-  deterministic merge.
-- **v0.8.16** — Repository Intelligence release. Expanded Facts.
-- **v0.8.17** — Activity Intelligence release. ActivityObservation,
-  ActivityFacts, Profile integration.
+All derived computations accept an explicit reference time. Every time-dependent
+conclusion — notably the activity measurement — is deterministic given the same
+reference time, removing any hidden dependency on the system clock.
