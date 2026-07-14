@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/divijg19/Atlas/internal/engine"
 	indexpkg "github.com/divijg19/Atlas/internal/index"
 	"github.com/divijg19/Atlas/internal/projection"
+	"github.com/divijg19/Atlas/internal/provenance"
 )
 
 func writeJSON(value any) error {
@@ -185,7 +187,7 @@ func printDatasetInfo(path string, indexData indexpkg.Index) {
 	fmt.Printf("Profiles: %d\n", len(indexData.All()))
 }
 
-func printInspectProjection(proj projection.InspectProjection) {
+func printInspectProjection(proj projection.InspectProjection, showProvenance bool) {
 	fmt.Printf("Profile: %s\n", proj.Username)
 
 	if proj.Metadata != nil {
@@ -259,6 +261,7 @@ func printInspectProjection(proj projection.InspectProjection) {
 			for _, item := range group.Items {
 				fmt.Printf("    - %s\n", item.Description)
 			}
+			printProvenance(group.Provenance, showProvenance, "    ")
 		}
 	}
 
@@ -272,6 +275,7 @@ func printInspectProjection(proj projection.InspectProjection) {
 				for _, item := range g.Items {
 					fmt.Printf("      - %s\n", item.Description)
 				}
+				printProvenance(g.Provenance, showProvenance, "      ")
 			}
 		}
 	}
@@ -283,8 +287,59 @@ func printInspectProjection(proj projection.InspectProjection) {
 			fmt.Printf("  %s:\n", rv.Repository)
 			for _, dv := range rv.Dimensions {
 				fmt.Printf("    %s: %s\n", dv.Name, dv.Summary)
+				for _, g := range dv.Evidence {
+					printProvenance(g.Provenance, showProvenance, "      ")
+				}
 			}
 		}
+	}
+}
+
+// printProvenance renders a provenance chain in human output only when the user
+// asks for it. Default inspect output stays concise; --provenance surfaces the
+// explanation graph that JSON always carries.
+func printProvenance(chain provenance.Chain, show bool, indent string) {
+	if !show || chain.IsEmpty() {
+		return
+	}
+	if len(chain.Repositories) > 0 {
+		refs := make([]string, 0, len(chain.Repositories))
+		for _, r := range chain.Repositories {
+			if r.Dimension != "" {
+				refs = append(refs, r.Repository+"."+r.Dimension)
+			} else {
+				refs = append(refs, r.Repository)
+			}
+		}
+		fmt.Printf("%sprovenance repositories: %s\n", indent, strings.Join(refs, ", "))
+	}
+	if len(chain.Indicators) > 0 {
+		refs := make([]string, 0, len(chain.Indicators))
+		for _, i := range chain.Indicators {
+			refs = append(refs, i.Signal)
+		}
+		fmt.Printf("%sprovenance indicators: %s\n", indent, strings.Join(refs, ", "))
+	}
+	if len(chain.Facts) > 0 {
+		refs := make([]string, 0, len(chain.Facts))
+		for _, f := range chain.Facts {
+			refs = append(refs, f.Name)
+		}
+		fmt.Printf("%sprovenance facts: %s\n", indent, strings.Join(refs, ", "))
+	}
+	if len(chain.Observations) > 0 {
+		refs := make([]string, 0, len(chain.Observations))
+		for _, o := range chain.Observations {
+			label := string(o.Kind)
+			if o.ID != "" {
+				label += "/" + o.ID
+			}
+			if o.Field != "" {
+				label += "." + o.Field
+			}
+			refs = append(refs, label)
+		}
+		fmt.Printf("%sprovenance observations: %s\n", indent, strings.Join(refs, ", "))
 	}
 }
 

@@ -11,11 +11,11 @@ import (
 // Aggregated from per-repository Repository Intelligence.
 type MaintenanceIntelligence struct {
 	dimensionBase
-	Level         Level
+	Level           Level
 	MaintainedRatio float64
-	StaleRepos    int
-	ArchivedRepos int
-	Confidence    Confidence
+	StaleRepos      int
+	ArchivedRepos   int
+	Confidence      Confidence
 }
 
 func buildMaintenance(repos []repositoryintelligence.RepositoryIntelligence) MaintenanceIntelligence {
@@ -53,7 +53,7 @@ func buildMaintenance(repos []repositoryintelligence.RepositoryIntelligence) Mai
 	dim.Level = levelFromRatio(ratio, 0.7, 0.4)
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("maintenance",
+		groupFrom(repos, "maintenance", []string{"maintenance"},
 			factItem("maintained repositories", maintained),
 			factItem("repositories", total),
 			factItem("stale repositories", stale),

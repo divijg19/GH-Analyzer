@@ -11,11 +11,11 @@ import (
 // portfolio. Aggregated from per-repository Repository Intelligence.
 type BreadthIntelligence struct {
 	dimensionBase
-	Level           Level
-	DistinctLangs   int
-	MultiLangRepos  int
-	MaxLangInRepo   int
-	Confidence      Confidence
+	Level          Level
+	DistinctLangs  int
+	MultiLangRepos int
+	MaxLangInRepo  int
+	Confidence     Confidence
 }
 
 func buildBreadth(repos []repositoryintelligence.RepositoryIntelligence) BreadthIntelligence {
@@ -61,7 +61,7 @@ func buildBreadth(repos []repositoryintelligence.RepositoryIntelligence) Breadth
 	}
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("breadth",
+		groupFrom(repos, "breadth", []string{"technology"},
 			factItem("distinct languages", dim.DistinctLangs),
 			factItem("repositories with 2+ languages", multiLang),
 			factItem("max languages in one repository", maxLang),

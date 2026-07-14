@@ -77,14 +77,16 @@ func printQueryHelp(w io.Writer) {
 
 func printInspectHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
-	fmt.Fprintln(w, "  atlas inspect <username> [--dataset dataset.json] [--json]")
+	fmt.Fprintln(w, "  atlas inspect <username> [--dataset dataset.json] [--json] [--provenance]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Options:")
 	fmt.Fprintln(w, "  --dataset string  Dataset file (default: dataset.json)")
-	fmt.Fprintln(w, "  --json            Output JSON")
+	fmt.Fprintln(w, "  --json            Output JSON (always includes the full provenance graph)")
+	fmt.Fprintln(w, "  --provenance      Show provenance chains in human output")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, "  atlas inspect octocat")
+	fmt.Fprintln(w, "  atlas inspect octocat --provenance")
 	fmt.Fprintln(w, "  atlas inspect octocat --json --dataset team.json")
 }
 

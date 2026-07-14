@@ -1,76 +1,63 @@
-# Atlas Repository Intelligence Specification
+# Atlas Repository Facts Specification
 
-This document is the **canonical specification for derived repository
-intelligence** in Atlas. It defines every deterministic fact derived from
-`RepositoryVestige` observations, its derivation formula, its observation
-inputs, its edge-case handling, and its invariants.
+Every deterministic fact derived from repository observations — its derivation
+formula, its observation inputs, its edge-case handling, and its invariants — is
+defined by this specification.
 
-It is the specification for **v0.8.16: Repository Intelligence**.
-
-Where `OBSERVATION_SPECIFICATION.md` defines *observations* (what Atlas
-acquires), `INTELLIGENCE.md` defines the *ontology* (what intelligence is),
-and `ARCHITECTURE.md` defines *layer ownership*, this document defines the
-*derivation contract* (how observations become facts). The three are
-deliberately separate: acquisition evolves, ontology is stable, derivation is
-now specified.
+`OBSERVATION_SPECIFICATION.md` defines observations (what Atlas acquires),
+`INTELLIGENCE.md` defines the ontology (what intelligence is), `ARCHITECTURE.md`
+defines layer ownership, and this specification defines the derivation contract
+(how observations become facts).
 
 ## Normative Authority
 
-This document is the **normative source** for every `RepositoryFacts` field
-added in v0.8.16. The code in `internal/facts/repository.go` is an
-**implementation** of this specification.
-
-If a derived fact's formula, input set, or edge-case handling changes, this
-document **must be updated first**. The code is then updated to match. No code
-change that alters a derivation is valid without a corresponding change to this
-specification.
+Every repository fact is governed by this specification. The facts layer
+implements it.
 
 ## Architectural Invariants
 
 ### No New Runtime Layer
 
-Repository intelligence in v0.8.16 lives **only** as a flat expansion of
-`facts.RepositoryFacts`. There is no new package, no new engine, no GraphQL
-change, no acquisition change. Derived knowledge is a field on the existing
-`RepositoryFacts` struct, computed in `facts.FromRepos`.
+Repository facts live **only** as a flat expansion of the repository fact
+aggregate. There is no separate package, engine, or acquisition path. Derived
+knowledge is a field on the existing repository fact aggregate.
 
 ### Facts, Not Signals
 
 Every value defined here is a **Fact**: a deterministic aggregate derivable
-purely from observations, given a `referenceTime`. The four named indicators
-(Ownership, Consistency, Depth, Activity) are unchanged. New ratio aggregates
-(ForkRatio, LicensedRatio, etc.) are descriptive portfolio facts, *not*
+purely from observations, given a reference time. The four named indicators
+(Ownership, Consistency, Depth, Activity) are unchanged. Ratio aggregates
+(ForkRatio, LicensedRatio, and similar) are descriptive portfolio facts, *not*
 indicators: they are not part of the four-value measurement model and do not
-feed `indicators.ExtractSignals`. They are exposed for evidence.
+feed the indicators layer. They are exposed for evidence.
 
 ### Determinism
 
-Equivalent vestige state plus equivalent `referenceTime` must always produce
-equivalent `RepositoryFacts` values. No clock dependence beyond the explicit
-`referenceTime` parameter. No provider dependence beyond the normalized
-vestiges.
+Equivalent observation state plus an equivalent reference time must always
+produce equivalent repository facts. No clock dependence beyond the explicit
+reference time. No provider dependence beyond the normalized observations.
 
-### Vestige-Only Inputs
+### Observation-Only Inputs
 
-Every derived fact consumes only fields already present on `RepositoryVestige`
-(after v0.8.15). v0.8.16 adds **no new observations**. It does not read
-`UserProfile`, `Contributions.Summary`, acquisition DTOs, or HTTP. Any
-intelligence requiring new observations (contribution windows, language union
-across contributed repos, follower counts) is deferred.
+Every derived fact consumes only fields already present on the repository
+observation. Repository facts add **no new observations**. They do not read user
+profile, contribution, acquisition, or transport data. A fact requiring new
+observations (contribution windows, language union across contributed
+repositories, follower counts) is not a repository fact.
 
 ### Flat Expansion Only
 
-`RepositoryFacts` gains scalar fields. It does not gain nested sub-structs,
-maps of arbitrary depth, or per-repo slices. `RankedLanguages` is the single
-allowed ordered list (a deterministic ranking, not a nested object). This keeps
-the fact struct flat, serializable, and inspectable.
+The repository fact aggregate holds scalar fields. It does not hold nested
+sub-structs, maps of arbitrary depth, or per-repository slices. Ranked languages
+is the single allowed ordered list (a deterministic ranking, not a nested
+object). This keeps facts flat, serializable, and inspectable.
 
 ---
 
 ## Observation Inputs
 
-All derivations consume the following `RepositoryVestige` fields (already owned
-by Atlas per `OBSERVATION_SPECIFICATION.md`):
+All derivations consume the following repository observation fields (owned by
+Atlas per `OBSERVATION_SPECIFICATION.md`):
 
 | Domain | Fields consumed |
 | --- | --- |
@@ -81,15 +68,22 @@ by Atlas per `OBSERVATION_SPECIFICATION.md`):
 | Maintenance | `Stars`, `OpenIssues`, `PullRequestCount`, `Forks`, `Watchers` |
 | Structure | `Size`, `DiscussionEnabled` |
 
-None of these require new acquisition. v0.8.16 is a pure derivation release.
+None of these require new acquisition; repository facts are pure derivations.
+
+**Provenance.** Facts reference observations; they never duplicate them. Each
+fact exposes the repository observation fields it derives from, referencing the
+repository observation family because portfolio facts aggregate every repository.
+Indicators reach observations transitively through this mapping. See
+[`PROVENANCE.md`](./PROVENANCE.md).
 
 ---
 
 ## Derived Fact Catalogue
 
-Each fact lists: its field name on `RepositoryFacts`, the vestige inputs, the
-deterministic formula, its type/range, and edge-case handling. All formulas are
-evaluated inside `FromRepos(repos, referenceTime)`.
+Each fact lists: its field name on the repository fact aggregate, the
+observation inputs, the deterministic formula, its type/range, and edge-case
+handling. All formulas are evaluated against the repository set and a reference
+time.
 
 ### 1. Star Distribution
 
@@ -124,12 +118,11 @@ language ranking.
 4. **Total order.** Because the tiebreak is a strict total order over language
    names (names are unique), the final ordering is fully determined and does
    **not** depend on `map` iteration order or `sort` implementation details.
-5. **Stable and reproducible.** Equivalent vestige state always yields an
-   identical `RankedLanguages` slice, on every Go toolchain.
+5. **Stable and reproducible.** Equivalent observation state always yields an
+   identical `RankedLanguages` slice, on every toolchain.
 
-This is the GitFut `languages` / `rankedLanguages` idea (signals.ts:18,22),
-adapted: the *deterministic derivation* is kept, the Devicon-logo presentation
-and FIFA `skillMoves` scale are rejected.
+Atlas keeps the deterministic language-ranking derivation and leaves behind the
+presentation and gamification concerns that surrounded it in prior research.
 
 ### 3. Release & Maintenance Aggregates
 
@@ -143,9 +136,9 @@ and FIFA `skillMoves` scale are rejected.
 | `ProtectedBranchRepos` | `int` | count of repos with `DefaultBranchProtected == true` | `0` |
 | `DiscussionRepos` | `int` | count of repos with `DiscussionEnabled == true` | `0` |
 
-These are pure summations/counts over fields already present after v0.8.15. They
-answer "how much release, PR, and collaboration infrastructure does this
-portfolio exhibit?" without interpretation.
+These are pure summations/counts over fields already present on the repository
+observation. They answer "how much release, PR, and collaboration infrastructure
+does this portfolio exhibit?" without interpretation.
 
 ### 4. Ratio Facts (deterministic, in [0, 1])
 
@@ -158,10 +151,9 @@ portfolio exhibit?" without interpretation.
 | `TopicBreadth` | `float64` | `TotalTopics / TotalRepos` | `0` if `TotalRepos == 0` |
 
 These normalize counts against portfolio size. `ForkRatio` answers "what share
-of this portfolio is original work versus forks?" — the GitFut `fork` signal,
-adapted to a ratio fact. `LicensedRatio` and `ArchivedRatio` characterize
-portfolio hygiene. All are clamped to [0, 1] by construction (`numerator ≤
-denominator`).
+of this portfolio is original work versus forks?" `LicensedRatio` and
+`ArchivedRatio` characterize portfolio hygiene. All are clamped to [0, 1] by
+construction (`numerator ≤ denominator`).
 
 ### 5. Freshness & Age (deterministic given `referenceTime`)
 
@@ -181,71 +173,56 @@ above; they are ratio-class, not age-class.)
 
 ---
 
-## Rejected Derivations (from GitFut research)
+## Excluded Concepts
 
-Prior GitFut research classified many GitFut concepts.
-The following were evaluated and **rejected** for v0.8.16 with rationale:
+The following concepts are deliberately **excluded** from the repository fact
+layer, with rationale. Some belong to other layers; others are presentation or
+gamification concerns that violate the Information Invariant.
 
 | Concept | Reason |
 | --- | --- |
-| FIFA six-stat model (PAC/SHO/PAS/DRI/DEF/PHY) | Gamified 0–99 rating; not a fact |
-| `archetypeFromShape` (Poacher/Regista/…) | Evaluation/Presentation; not a fact |
-| `pickFinish` (bronze/silver/gold/toty/icon) | Evaluation/Presentation gamification |
-| `legacyScore` / founder forced-overalls | Non-deterministic favouritism |
-| `deriveStyle` activity-shape naming | Future behaviour facts; needs contribution windows |
-| Language-logo resolution (Devicon CDN) | Presentation; not intelligence |
-| `recent_contributions` / `recent_commits` / `active_days` | Realized via `ActivityFacts` (v0.8.17) |
-| Language union across contributed repos | Future collaboration facts; requires new acquisition |
-| `followers` / `account_age_years` | Lives on `UserMetadata`, not repository facts |
+| Six-stat athletic rating model | Gamified bounded rating; not a fact |
+| Archetype naming (from activity shape) | Evaluation/Presentation; not a fact |
+| Tiered finish labelling (bronze/silver/gold/…) | Evaluation/Presentation gamification |
+| Legacy/founder forced overalls | Non-deterministic favouritism |
+| Activity-shape style naming | Behaviour facts; needs contribution windows |
+| Language-logo resolution | Presentation; not intelligence |
+| Recent contributions / commits / active days | Owned by activity facts |
+| Language union across contributed repositories | Collaboration facts; requires new acquisition |
+| Followers / account age | Owned by user metadata, not repository facts |
 
-The *deterministic derivation technique* behind GitFut's log-scaling and
-language ranking is acknowledged and adapted where it maps cleanly to a flat
-fact (star distribution, language ranking). The *FIFA framing* is never ported.
-
----
-
-## Out of Scope (Frozen Layers)
-
-v0.8.16 changed **only** `RepositoryFacts` (flat fields) and `FromRepos`. The
-following remain untouched in the v0.8.17 architectural baseline:
-
-- `observations.RepositoryVestige` — no new observation fields
-- `internal/acquisition` (REST/GraphQL/merge/normalize) — frozen
-- `indicators.Signals` / `indicators.RawScore` — frozen; formulas stable
-- `internal/evaluation`, `internal/engine`, `internal/projection` — frozen
-- CLI version, server endpoints — frozen
-- Speculative `ContributionFacts` / `TechnologyFacts` / `BehaviourFacts` /
-  `CollaborationFacts` placeholders — removed in v0.8.17 verification pass;
-  future domains are documented ownership boundaries, not exported types
+The deterministic derivation technique behind log-scaling and language ranking
+is adapted where it maps cleanly to a flat fact (star distribution, language
+ranking). The gamified framing is never adopted.
 
 ---
 
-## Fact Certification Checklist
+## Out of Scope
 
-For every fact added in v0.8.16, the following must hold before certification:
+Repository facts own only the repository fact aggregate (flat fields). They own
+none of the following:
 
-1. Derivable solely from `RepositoryVestige` fields present after v0.8.15.
-2. Deterministic given `repos` and `referenceTime`.
-3. Edge cases (empty input, zero denominators) handled explicitly.
-4. Implemented in `FromRepos` with no new package or layer.
-5. Exposed as a flat field on `RepositoryFacts` (only `RankedLanguages` is an
-   ordered list; no nested structs or maps).
-6. Not consumed by `ExtractSignals` (it remains the four named signals).
-7. Covered by unit tests in `internal/facts` (canonical; e.g. `determinism_test.go`).
-8. Documented here as the normative source; no implementation-only heuristics.
+- Repository observation — facts add no observation fields
+- Acquisition — facts own no acquisition, merge, or normalization
+- Indicators — facts own no indicator formulas
+- Evaluation, Projection — facts own no scoring or presentation
+- CLI and server endpoints — facts own no presentation surface
+
+Fact domains beyond the repository aggregate (contribution, technology,
+behaviour, collaboration) are ownership boundaries, not repository facts.
 
 ---
 
-## Historical Note
+## Conformance Invariants
 
-- **v0.8.16** — Repository Intelligence release. Established this specification
-  as the normative source for derived `RepositoryFacts`. Expanded
-  `RepositoryFacts` with flat deterministic aggregates: star distribution
-  (`MaxRepoStars`, `MeanRepoStars`), technology breadth (`LanguageCount`,
-  `RankedLanguages`), release/maintenance aggregates (`TotalReleases`,
-  `LatestReleaseAt`, `ReleasedRepos`, `TotalPullRequests`, `TotalCollaborators`,
-  `ProtectedBranchRepos`, `DiscussionRepos`), ratio facts (`ForkRatio`,
-  `LicensedRatio`, `ArchivedRatio`), and freshness/age facts
-  (`PortfolioAgeDays`, `NewestRepoAgeDays`, `DaysSinceLatestRelease`,
-  `MeanRepoSize`, `TopicBreadth`). No new observations, no new signals, no new
-  layers.
+For every repository fact, the following hold:
+
+1. It is derivable solely from repository observation fields.
+2. It is deterministic given the repository set and reference time.
+3. Its edge cases (empty input, zero denominators) are handled explicitly.
+4. It lives in the facts layer with no new package or layer.
+5. It is exposed as a flat field on the repository fact aggregate (only ranked
+   languages is an ordered list; no nested structs or maps).
+6. It is not consumed by the indicators layer (which remains the four named
+   signals).
+7. This specification is its normative source; no implementation-only heuristics.

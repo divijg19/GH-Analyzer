@@ -1,506 +1,335 @@
 # Atlas Architecture
 
-This document is the canonical reference for layer ownership in Atlas.
-It is the source of truth for where new code belongs. The frozen layers and
-their canonical packages are:
+Atlas is a strictly layered system. Each layer owns a distinct kind of
+knowledge and exposes it through a stable contract. Knowledge flows in one
+direction: a layer depends only on the layers beneath it, never on the layers
+above.
 
-| Layer | Package |
-|-------|---------|
-| Observations | `internal/observations` |
-| Facts | `internal/facts` |
-| Indicators | `internal/indicators` |
-| Evidence | `internal/evidence` |
-| Evaluation | `internal/evaluation` |
-| Profile | `internal/profile`, `internal/index` |
-| Repository Intelligence | `internal/repositoryintelligence` (v0.9.0) |
-| Candidate Intelligence | `internal/intelligence` (v0.9.0; aggregates Repository Intelligence) |
-| Projection | `internal/projection` |
+> **Invariant: every layer owns knowledge, not implementation.** A layer is
+> defined by the knowledge it owns and the contract it exposes, never by the
+> transport, provider, or presentation mechanism it happens to use. Mechanisms
+> may change beneath a layer without changing the layer; the knowledge a layer
+> owns cannot move without moving the layer.
 
-`internal/signals` was a deprecated compatibility shim that owned nothing; it
-was removed in v0.9.0 (zero consumers).
+The conceptual model behind these layers is defined in
+[`INTELLIGENCE.md`](./INTELLIGENCE.md).
 
-The pipeline is strictly downward:
+## The Pipeline
 
 ```
 GitHub
     ↓
-Transport              internal/github
+Transport                request execution and authentication
     ↓
-REST + GraphQL         internal/acquisition
+Acquisition              provider schema, endpoints, and responses
     ↓
-Normalization          internal/acquisition/normalize.go
+Normalization            provider representation → canonical observations
     ↓
-Merge                  internal/acquisition/merge.go
+Merge                    one canonical observation per artifact
     ↓
-Observations           observations.RepositoryVestige · observations.ActivityObservation · profile.UserMetadata · contributions.Summary
+Observations             raw, canonical records of what was observed
     ↓
-Facts                  facts.RepositoryFacts · facts.ActivityFacts
+Facts                    deterministic aggregates of observations
     ↓
-Indicators             indicators.Signals → indicators.RawScore
+Indicators               normalized measurements derived from facts
     ↓
-Profile                index.Profile (assembles facts, indicators, metadata, contributions, activity)
-    ├─▶ Evaluation             internal/evaluation (overall score, penalty, confidence, ranking policy)
-    ├─▶ Repository Intelligence internal/repositoryintelligence (v0.9.0: deterministic semantic interpretation of each RepositoryVestige)
-    │       ↓
-    │   Candidate Intelligence  internal/intelligence (v0.9.0: aggregates Repository Intelligence across the portfolio)
-    └─ (direct Profile read retained only for pre-aggregation evidence)
+Evidence                 the explanation carried by every conclusion
     ↓
-Projection             internal/projection (presentation shapes; consumes Evaluation output and CandidateIntelligence)
+Profile                  the canonical candidate aggregate
+    ├─▶ Evaluation                interpretation of scores
+    └─▶ Repository Intelligence   interpretation of one repository
+            ↓
+        Candidate Intelligence    interpretation of a portfolio
     ↓
-Consumers              cmd/atlas · cmd/server · web
+Projection               read-only views for consumers
+    ↓
+Presentation             consumer surfaces
 ```
 
-The conceptual model behind these layers — Observations, Facts, Indicators,
-Profile, Evaluation, Intelligence, Projection, Consumers — is defined in
-[`INTELLIGENCE.md`](./INTELLIGENCE.md). The v0.9.0 Candidate Intelligence layer
-is specified in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md).
+Provenance is a cross-cutting vocabulary consumed by every layer to name what it
+took from the layer beneath it. It is the lowest layer of the explanation model
+and depends on nothing else. See [`PROVENANCE.md`](./PROVENANCE.md).
 
 ---
 
 ## Layer Ownership
 
-### Transport — `internal/github`
+### Provenance
 
 **Owns**
 
-- HTTP client construction and lifecycle
-- Authentication (`GITHUB_TOKEN` → `Authorization: Bearer`)
-- Request headers (User-Agent, auth)
-- Request execution (`Do`)
+- The reference vocabulary that binds every deterministic transformation:
+  references to observations, facts, indicators, and repositories, and the chain
+  that composes them
+- The record of which acquisition source produced an observation, naming the
+  provider without depending on it
 
 **Never owns**
 
-- Facts, Indicators, Profiles, Contributions, Evidence
-- Presentation
-- GitHub endpoint semantics or DTOs
+- Domain data, derivation, interpretation, or presentation
+- Any dependency on another layer
 
-Transport is the only package permitted to perform raw `http` I/O on behalf of
-authentication and execution. It has no knowledge of the domain.
+Provenance is a pure vocabulary of small, immutable values. It answers: "How
+does one layer name what it consumed from the layer below?" See
+[`PROVENANCE.md`](./PROVENANCE.md).
 
-### Acquisition — `internal/acquisition`
+### Transport
 
 **Owns**
 
-- GitHub REST endpoints and their URLs
-- GitHub GraphQL queries and endpoint
-- GitHub DTOs (mirroring GitHub's JSON schema exactly) for both REST and
-  GraphQL (`repositories.go`, `graphql_types.go`)
-- GitHub endpoint semantics, response handling, pagination
-- GitHub API errors (`APIError`)
-- The acquisition client (`Client`) used by consumers
-- GraphQL query definitions (`graphql_query.go`, `graphql_activity.go`)
-- Per-repo GraphQL execution (`graphql.go`: `queryRepo`, `fetchGraphQLVestiges`)
-- Activity acquisition via `contributionsCollection` (`graphql_activity.go`)
+- Request execution and lifecycle
+- Authentication and request headers
 
 **Never owns**
 
-- Signals, Facts, Profiles, business logic
-- Ranking, scoring, evidence
-- Merge policy (merge is an Atlas concern, not acquisition — see Merge below)
+- Facts, indicators, profiles, contributions, or evidence
+- Provider endpoint semantics or schemas
 - Presentation
 
-Acquisition owns **GitHub's schema, not ours**. If GitHub changes its API,
-only this layer changes; everything above remains untouched. DTOs mirror
-GitHub field names and types verbatim — timestamps remain raw strings inside
-DTOs and are parsed only during normalization.
+Transport is the only layer permitted to perform raw network I/O. It has no
+knowledge of the domain.
 
-Acquisition supports two mechanisms:
-- **REST** via `repositories.go` (`FetchRepos`, `FetchReposNormalized`)
-- **GraphQL** via `graphql.go` (`fetchGraphQLVestiges`)
-
-Both produce DTOs. Normalization converts DTOs to domain vestiges. The
-high-level entry point `FetchReposEnriched` orchestrates REST + GraphQL +
-merge to produce fully observed vestiges. When GraphQL is unavailable,
-REST-only vestiges are returned — GraphQL enrichment is always additive.
-
-### Normalization — `internal/acquisition/normalize.go`
+### Acquisition
 
 **Owns**
 
-- Mapping GitHub DTOs to domain models:
-  - `RepoDTO` → `observations.RepositoryVestige` (`normalizeRepo`)
-  - `graphQLRepo` → `observations.RepositoryVestige` partial (`normalizeGraphQLRepo`)
-  - `UserDTO` → `profile.UserMetadata` (`NormalizeUser`)
-  - `ContributionsDTO` → `contributions.Summary` (`NormalizeContributions`)
-  - Activity DTOs → `observations.ActivityObservation` (`normalizeActivityProfile`, `normalizeYearContrib`)
-- Timestamp parsing (`created_at` / `updated_at` → `time.Time`, zero-fallback)
+- Provider endpoints, queries, and their schemas
+- Provider response handling, pagination, and errors
+- Repository and activity acquisition
 
-**Never performs**
+**Never owns**
+
+- Facts, profiles, or business logic
+- Ranking, scoring, or evidence
+- Merge policy — merge is an Atlas concern, not a provider concern
+- Presentation
+
+Acquisition owns the **provider's schema, not Atlas's**. When the provider
+changes its API, only this layer changes; everything above remains untouched.
+Acquisition mirrors provider field names and types verbatim; canonical meaning
+is assigned only during normalization. Provider values are additive: enrichment
+sources augment the baseline and never override it with precedence heuristics.
+
+### Normalization
+
+**Owns**
+
+- Mapping provider representations to canonical observations
+- Parsing provider values into canonical types
+
+**Never owns**
 
 - Network requests
-- Ranking, indicator computation, or any business logic
-- Merge of multiple acquisition sources (merge is separate — see Merge below)
+- Ranking, measurement, or any business logic
+- Merge of multiple acquisition sources
 
-Normalization is co-located in `internal/acquisition` (not a separate
-package). It is the single boundary between GitHub's representation and the
-domain's. Both REST and GraphQL DTOs pass through normalization before
-reaching the domain.
+Normalization is the single boundary between the provider's representation and
+Atlas's. Every acquired value passes through normalization before reaching the
+domain.
 
-### Merge — `internal/acquisition/merge.go`
+### Merge
 
 **Owns**
 
-- Combining REST-derived and GraphQL-derived vestiges into a single final
-  vestige (`mergeVestiges`)
-- Merge policy derived from `OBSERVATION_SPECIFICATION.md` — each field's
-  owner and canonical acquisition mechanism determine which value wins
-- Documentation of the specification-derived merge policy for each field
+- Combining values acquired from multiple mechanisms into one canonical
+  observation per artifact
+- Merge policy, derived from the Observation Specification: each field's owner
+  and canonical acquisition mechanism determine which value is authoritative
 
 **Never owns**
 
-- Network requests, DTOs, normalization, signal computation
+- Network requests, provider schemas, or normalization
 
-Merge is Atlas logic, not acquisition logic. It is co-located in
-`internal/acquisition` because it operates on vestiges produced by
-normalization, but its policy is determined by the Observation
-Specification, not by GitHub's API structure. Merge is unconditionally
-additive for GraphQL-authoritative fields because they have no REST overlap;
-no precedence heuristics are used.
+Merge is Atlas logic, not provider logic. Its policy is determined by the
+[Observation Specification](./OBSERVATION_SPECIFICATION.md), not by the
+provider's API structure. Merge is additive: an authoritative field has a single
+source, so no precedence heuristics are used.
 
 ---
 
-### Observations — `observations.RepositoryVestige`, `observations.ActivityObservation`, `profile.UserMetadata`, `contributions.Summary`
+### Observations
 
 **Owns**
 
-- The raw, normalized observations recorded from external providers
-- Repository observations (`observations.RepositoryVestige`), activity observations
-  (`observations.ActivityObservation`), account metadata (`profile.UserMetadata`), and
-  contribution totals (`contributions.Summary`)
+- The raw, canonical observations recorded from external providers: repository
+  observations, activity observations, account metadata, and contribution totals
 
 **Never owns**
 
-- Aggregation, signal extraction, scoring, or ranking
+- Aggregation, measurement, scoring, or ranking
 
-Observations are the lowest layer of the intelligence model: raw data Atlas
-records but does not compute. They are the input to Facts. Each observation
-type has a single owning package: `internal/observations` owns repository
-and activity observations; `internal/profile` owns user metadata;
-`internal/contributions` owns contribution summaries.
+Observations are the lowest layer of the intelligence model: raw records Atlas
+keeps but does not compute. They are the input to Facts. See
+[`OBSERVATION_SPECIFICATION.md`](./OBSERVATION_SPECIFICATION.md).
 
-### Facts — `facts.RepositoryFacts`, `facts.ActivityFacts`
+### Facts
 
 **Owns**
 
-- Aggregated repository statistics (`facts.RepositoryFacts`)
-- Aggregated activity statistics (`facts.ActivityFacts`)
-- Deterministic derivation from observations
-- Repository facts derive from `[]observations.RepositoryVestige`
-- Activity facts derive from `[]observations.ActivityObservation`
+- Deterministic aggregates of observations: repository facts and activity facts
+- Derivation of those aggregates from observations alone
 
 **Never owns**
 
-- Indicator computation, scoring, ranking, or presentation
+- Measurement, scoring, ranking, or presentation
 
 Facts are structured observations. They answer: "What do we know about this
-user's repository portfolio and activity?"
+candidate's repositories and activity?" See
+[`REPOSITORY_FACTS.md`](./REPOSITORY_FACTS.md) and
+[`ACTIVITY_INTELLIGENCE.md`](./ACTIVITY_INTELLIGENCE.md).
 
-### Indicators — `indicators.Signals`, `indicators.RawScore`
+### Indicators
 
 **Owns**
 
-- Indicator extraction (ownership, consistency, depth, activity)
-- Indicator scoring (0-100 integer components)
+- Extraction of the four measurements — ownership, consistency, depth, activity
+- Component scoring of those measurements
 
 **Never owns**
 
-- Evidence generation (that is `internal/evidence`)
-- Overall score computation (that is evaluation policy, not indicator extraction)
-- Ranking weights or penalties (those are evaluation concerns)
+- Evidence
+- Overall score computation, ranking weights, or penalties
 - Network, persistence, or presentation
 
-Indicators are normalized measurements. They answer: "How do we quantify what
-we observe?"
+Indicators are normalized measurements. They answer: "How do we quantify what we
+observe?" Indicators know only facts and reach observations transitively; they
+remain provider-agnostic.
 
-**Key distinction:** `RawScore` contains only the three component scores
-(ownership, consistency, depth). The overall score is computed by the
-evaluation layer.
-
-### Profile — `index.Profile`
+### Evidence
 
 **Owns**
 
-- The canonical candidate aggregate
-- Storage of facts, signals, metadata, contributions, and activity facts
+- The canonical explanation unit, its human-readable items, and the provenance
+  chain binding each conclusion to the indicators, facts, and observations that
+  produced it
+
+**Never owns**
+
+- Interpretation, scoring, or presentation
+- The provenance vocabulary itself
+
+Evidence is Atlas's explanation layer. Every interpretive layer expresses its
+reasoning as evidence carrying provenance, so no conclusion exists without a
+complete, deterministic explanation. See [`PROVENANCE.md`](./PROVENANCE.md).
+
+### Profile
+
+**Owns**
+
+- The canonical candidate aggregate: facts, indicators, metadata, contributions,
+  and activity facts
 
 **Never owns**
 
 - Overall scores, rankings, or evaluations
 - Presentation or interpretation
 
-Profile is the single source of truth for what we know about a candidate.
-It stores observations, not evaluations.
+Profile is the single source of truth for what Atlas knows about a candidate
+before interpretation. It stores observations, not evaluations.
 
-**Signals storage:** Profile stores signals as `map[string]float64` (0-1 float
-values). This is the observation-level representation, not the scored
-representation.
-
-**Activity storage:** Profile stores ActivityFacts (not raw observations) as
-`facts.ActivityFacts`. This keeps the profile compact and provider-independent.
-
-### Evaluation — `internal/evaluation`
+### Evaluation
 
 **Owns**
 
-- Overall score assembly (`OverallScore`) from the three component scores and
-  the canonical ranking weights (ownership `0.3`, consistency `0.4`, depth `0.3`)
-- Small-sample penalty (`ApplySmallSamplePenalty`) for evaluations built on too
-  few repositories
-- Confidence classification (high, moderate, low)
-- Ranking policy and weights (`RankingPolicy`)
-- Future: percentile mapping, role-fit scoring, candidate scoring
+- Overall score assembly from component scores and canonical ranking weights
+- The small-sample penalty for evaluations built on too few repositories
+- Confidence classification
+- Ranking policy and weights
 
 **Never owns**
 
-- Search execution, filtering, or ordering (those are engine concerns)
+- Search execution, filtering, or ordering
 - Presentation or rendering
-- Data acquisition or normalization
+- Acquisition or normalization
 
-Evaluation is the single source of truth for how scores are interpreted.
-It transforms raw scores into meaningful evaluations that projection can
-present directly.
+Evaluation is the single source of truth for how scores are interpreted. It
+transforms raw scores into evaluations that projection can present directly.
 
-**Key distinction:** Evaluation owns score interpretation. Engine owns search
-execution. Projection owns presentation. Presentation owns rendering.
-
-### Candidate Intelligence — `internal/intelligence` (v0.9.0)
+### Repository Intelligence
 
 **Owns**
 
-- The deterministic semantic interpretation of a `Profile` (`CandidateIntelligence`)
-- Seven intelligence dimensions: Ownership, Delivery, Breadth, Maintenance, Project, Collaboration, Portfolio
-- Deterministic `Evidence` and `Summary` per dimension
-- The normative contract `Name() / Evidence() / Summary()` for every dimension
+- The deterministic semantic interpretation of a single repository across its
+  dimensions
+- Deterministic evidence and summary per dimension, via the dimension contract
 
 **Never owns**
 
-- Acquisition, normalization, fact derivation, indicator calculation, or evaluation
-- Ranking, scoring, comparison, or presentation
-- Any dependency on GitHub, HTTP, GraphQL, REST, or DTOs
-- Introduction of information not already present in the `Profile` (see the
-  Information Invariant in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md))
-
-Candidate Intelligence is a pure synthesis layer. It consumes a resolved
-`Profile` and reorganizes existing deterministic knowledge into interpretable
-dimensions. Growth Intelligence is a **reserved** dimension (defined in the
-spec, not implemented in v0.9.0) pending historical snapshot storage. The full
-contract, per-dimension definitions, and certification criteria are normative
-in [`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md).
-
-### Repository Intelligence — `internal/repositoryintelligence` (v0.9.0)
-
-**Owns**
-
-- The deterministic semantic interpretation of a single `observations.RepositoryVestige` (`RepositoryIntelligence`)
-- Thirteen repository dimensions: Identity, Health, Maintenance, Delivery, Architecture, Technology, Community, Documentation, Quality, Complexity, Lifecycle, Governance, Risk
-- Deterministic `Evidence` and `Summary` per dimension, via the same `Name() / Evidence() / Summary()` contract as Candidate Intelligence
-
-**Never owns**
-
-- Acquisition, normalization, fact derivation (the `facts.RepositoryFacts` aggregate remains owned by `internal/facts`), indicator calculation, or evaluation
+- Acquisition, normalization, fact derivation, measurement, or evaluation
 - Aggregation across a portfolio — that is Candidate Intelligence's role
-- Any dependency on `internal/intelligence` (the dependency direction is one-way: Candidate Intelligence imports Repository Intelligence, never the reverse)
-- Introduction of information not already present in the `RepositoryVestige` (Information Invariant, [`REPOSITORY_INTELLIGENCE.md`](./REPOSITORY_INTELLIGENCE.md))
+- Any dependency on Candidate Intelligence; the dependency direction is one-way
+- Any information not already present in the repository observation
 
 Repository Intelligence is a pure synthesis layer computed per repository. It is
-the second interpretive layer and the building block Candidate Intelligence
-aggregates. The full contract, the thirteen dimension definitions, and the
-aggregation contract are normative in
+the building block Candidate Intelligence aggregates. See
 [`REPOSITORY_INTELLIGENCE.md`](./REPOSITORY_INTELLIGENCE.md).
 
-### Engine — `internal/engine`
+### Candidate Intelligence
 
 **Owns**
 
-- Search query execution
-- Candidate filtering and matching
-- Result ordering and ranking
-- Query parsing and condition matching
+- The deterministic semantic interpretation of a Profile across its dimensions
+- Deterministic evidence and summary per dimension, via the dimension contract
 
 **Never owns**
 
-- Score interpretation or confidence classification (that is evaluation)
+- Acquisition, normalization, fact derivation, measurement, or evaluation
+- Ranking, comparison, or presentation
+- Any dependency on a provider or transport
+- Any information not already present in the Profile
+
+Candidate Intelligence is a pure synthesis layer. It aggregates Repository
+Intelligence across a portfolio and reorganizes existing deterministic knowledge
+into interpretable dimensions. See
+[`CANDIDATE_INTELLIGENCE.md`](./CANDIDATE_INTELLIGENCE.md).
+
+### Engine
+
+**Owns**
+
+- Search query execution, candidate filtering and matching, result ordering
+
+**Never owns**
+
+- Score interpretation or confidence classification
 - Presentation or rendering
-- Data acquisition or normalization
+- Acquisition or normalization
 
 Engine is the orchestration layer for search. It filters, matches, and orders
-candidates based on query conditions.
+candidates by query conditions.
 
-### Projection — `internal/projection`
+### Projection
 
 **Owns**
 
-- Consumer-facing read models
-- Repository ordering (top repos by size, relevance, etc.)
-- Deterministic formatting and ordering
+- Consumer-facing read models and their deterministic ordering and formatting
 
 **Never owns**
 
-- Overall score or penalty computation — those are Evaluation's
-  (`evaluation.OverallScore`, `evaluation.ApplySmallSamplePenalty`)
-- Ranking weights or policy — those are Evaluation's (`evaluation.RankingPolicy`)
-- Data acquisition, normalization, or storage
-- Intelligence computation (facts, signals, evidence)
+- Overall score, penalty, ranking weights, or confidence — those are Evaluation's
+- Acquisition, normalization, or storage
+- Intelligence computation
 
-Projection is a read-only, deterministic view of the domain for presentation.
-It transforms domain data into shapes optimized for specific consumers. Scored
-values (overall score, penalties, confidence) are supplied by Evaluation and
-re-shaped here; they are never recomputed.
+Projection is a read-only, deterministic view of the domain for presentation. It
+reshapes domain data into forms optimized for specific consumers. Scored values
+are supplied by Evaluation and reshaped here; they are never recomputed.
 
-**Projection types:**
-
-- `AnalyzeProjection` — Deep-dive analysis (overall score, top repos, component scores)
-- `InspectProjection` — Raw data inspection (everything + evidence + Candidate Intelligence + per-repository Repository Intelligence)
-- `SearchProjection` — Search results (username, score, confidence, signals, reasons)
-- `RepositoryIntelligenceView` — Per-repository intelligence view (thirteen dimensions), built via `internal/repositoryintelligence`
-
-### Presentation — `cmd/atlas`, `cmd/server`, `web`
+### Presentation
 
 **Owns**
 
-- CLI command handling and formatting
-- HTTP API surface and JSON shaping
-- Web UI
+- Consumer surfaces: command-line output, the HTTP API, and the web UI
 
 **Never computes**
 
-- Intelligence. Presentation formats; it does not derive facts, signals, or
+- Intelligence. Presentation formats; it does not derive facts, measurements, or
   rankings. All intelligence is produced by the domain and reached through
   projection.
 
----
+## Documentation Invariant
 
-## Decision Rule
-
-Before implementing any change, ask:
-
-> **Which layer owns this?**
-
-- Network call to GitHub? → **Acquisition**
-- GitHub JSON → internal model? → **Normalization**
-- A fact or observation? → **Facts**
-- A measurement or indicator? → **Indicators**
-- Evidence or justification? → **Evidence**
-- The candidate aggregate? → **Profile**
-- A semantic interpretation of a Profile? → **Candidate Intelligence**
-- Score interpretation or confidence? → **Evaluation**
-- Search execution or filtering? → **Engine**
-- A view for a consumer? → **Projection**
-- Output text or HTTP response? → **Presentation**
-
-If a change spans multiple layers, it is likely too large — split it. If no
-single layer clearly owns it, the architecture must be revisited before code
-is written.
-
----
-
-## Historical Evolution
-
-This section documents the evolution of the Atlas architecture. Legacy
-terminology (e.g. `signals.*` as an umbrella package) may appear here for
-historical accuracy but does not reflect the current frozen architecture.
-
-**v0.8.11** consolidated all GitHub REST access into `internal/acquisition`,
-made the domain packages pure, and established the normalization boundary.
-
-**v0.8.12** completed the presentation architecture:
-- Removed `Report` (deleted `signals.RepositoryVestigert`, `signals.Scores`, `signals.BuildReport`)
-- Established projection layer with `CandidateProjection`, `AnalyzeProjection`, `InspectProjection`, `SearchProjection`
-- All CLI/server presentation paths now consume projections
-- Introduced `internal/evaluation` as the single owner of score interpretation
-- Removed projection dependency on engine; projection depends only on domain + evaluation
-- Documented the future Insights layer (not yet implemented)
-- Profile remains the canonical aggregate; projections are presentation shapes
-
-**v0.8.13** rebranded the project and consolidated evaluation ownership:
-
-- Renamed the module `github.com/divijg19/GH-Analyzer` →
-  `github.com/divijg19/Atlas`; removed the legacy `cmd/gha` and
-  `internal/ghanalyzer` packages (Phase 1).
-- Consolidated scoring into `internal/evaluation` (`scoring.go`):
-  `RankingPolicy`, `OverallScore`, and `ApplySmallSamplePenalty`.
-  (Phase 6).
-- Enriched repository observations and facts with metadata — `RepoDTO`,
-  `RepositoryVestige`, `NormalizeRepos`, `RepositoryFacts` — without introducing new
-  indicators (Phase 9, Repository Intelligence Foundation).
-- Documented the canonical intelligence model in
-  [`INTELLIGENCE.md`](./INTELLIGENCE.md): Observations, Facts, Indicators, Profile,
-  Evaluation, Intelligence, Projections, Consumers.
-
-**v0.8.13 (final conformance & release-freeze pass)** completed simplification
-and canonicalization with no new intelligence:
-
-- Canonicalized signal-name constants (`SignalOwnership`,
-  `SignalConsistency`, `SignalDepth`, `SignalActivity`) and applied them across
-  `indicators`, `evaluation`, `search`, `engine`, and `presets`, removing
-  duplicated string literals.
-- Extracted the single canonical profile builder `index.BuildProfile` (with the
-  `index.ProfileFetcher` interface) and rewired onto it.
-- Removed the convenience `search → evaluation` dependency: `search.Search` now
-  passes `nil` to `engine.Execute`, which defaults to `evaluation.RankingPolicy{}`.
-- Deleted the unused `CandidateProjection` / `BuildCandidateProjection`
-  (zero production callers) and its tests.
-- Removed the speculative future "Insights" stage from the architecture and
-  pipeline diagram; `Profile → Evaluation → … → Projection` is now the
-  documented canonical flow.
-
-**v0.8.15** completed the observation acquisition architecture:
-
-- Established `docs/OBSERVATION_SPECIFICATION.md` as the normative source for
-  observation ownership and merge policy.
-- Added GitHub GraphQL acquisition: `graphql_types.go` (DTOs),
-  `graphql_query.go` (query), `graphql.go` (executor).
-- Extended normalization with `normalizeGraphQLRepo` for GraphQL DTOs.
-- Added `merge.go` with specification-driven `mergeVestiges`.
-- Enriched `RepositoryVestige` with 8 new GraphQL-authoritative fields.
-- REST remains the baseline; GraphQL enrichment is additive with graceful
-  degradation.
-- No downstream layers (Facts, Indicators, Profile, Evaluation, Engine,
-   Projection, Consumers) were modified.
-
-**v0.8.17** introduced Activity Intelligence:
-- `observations.ActivityObservation` type with strongly-typed metadata
-- GraphQL activity acquisition via `contributionsCollection`
-- `facts.ActivityFacts` with deterministic derivations
-- Integration into `index.Profile` and `projection.InspectProjection`
-- `OBSERVATION_SPECIFICATION.md` and `ACTIVITY_INTELLIGENCE.md` as normative specs
-
-**v0.8.17 (ontology consolidation)** completed the architectural freeze:
-- Migrated all canonical logic from `internal/signals` to `internal/observations`,
-  `internal/facts`, `internal/indicators`, `internal/evidence`, `internal/evaluation`,
-  `internal/profile`, `internal/projection`.
-- `internal/signals` became a pure compatibility shim with zero ownership.
-- Reduced public API surfaces to only what is consumed externally.
-- Aligned all normative documentation to frozen architecture.
-
-**v0.9.0 (Candidate Intelligence)** froze the first intelligence ontology as a
-deterministic semantic interpretation layer above `Profile`:
-
-- Introduced `docs/CANDIDATE_INTELLIGENCE.md` as the normative specification for
-  Candidate Intelligence.
-- Defined seven implemented dimensions (Ownership, Delivery, Breadth,
-  Maintenance, Project, Collaboration, Portfolio) and one reserved dimension
-  (Growth).
-- Established the Information Invariant: intelligence never introduces
-  information, only reorganizes knowledge already present in the `Profile`.
-- Defined the Dimension Contract (`Name()`, `Evidence()`, `Summary()`) and the
-  Evidence → Summary product separation.
-- Reframed GitFut as a research corpus that *validated* interpretation lenses;
-  Atlas owns the ontology. (Implementation in `internal/intelligence` follows
-  the spec in later phases.)
-
-**v0.9.0 (Repository Intelligence layer — restructuring)** introduced the second
-interpretive layer and reframed Candidate Intelligence to aggregate it:
-
-- Introduced `docs/REPOSITORY_INTELLIGENCE.md` as the normative specification for
-  the repository-domain intelligence layer.
-- Renamed the former `docs/REPOSITORY_INTELLIGENCE.md` (the v0.8.16 repository
-  facts/indicators spec) to `docs/REPOSITORY_FACTS.md`.
-- Implemented `internal/repositoryintelligence`: deterministic semantic
-  interpretation of a single `observations.RepositoryVestige` across thirteen
-  dimensions (Identity, Health, Maintenance, Delivery, Architecture, Technology,
-  Community, Documentation, Quality, Complexity, Lifecycle, Governance, Risk).
-- Candidate Intelligence now aggregates `RepositoryIntelligence` across the
-  portfolio (see `docs/CANDIDATE_INTELLIGENCE.md` §7) instead of reading
-  `RepositoryVestige` facts directly for portfolio dimensions.
-
+Atlas's documentation describes contracts, ownership, and invariants. It does
+not describe implementations, history, releases, or development process. A
+specification names what a layer owns and the contract it exposes; it never
+names the packages, files, or mechanisms that satisfy that contract, and it
+never narrates how the system reached its present form.

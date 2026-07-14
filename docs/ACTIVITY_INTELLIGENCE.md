@@ -1,13 +1,10 @@
 # Atlas Activity Intelligence Specification
 
-This document is the **normative specification** for all Activity Intelligence
-derivations in Atlas. It defines every field in `facts.ActivityFacts`, its
-purpose, its input observations, its derivation, its edge cases, and its
-invariants.
+Every field in `ActivityFacts` — its purpose, its input observations, its
+derivation, its edge cases, and its invariants — is defined by this
+specification.
 
-It is the specification for **v0.8.17: Activity Intelligence**.
-
-Where `ACTIVITY_SPECIFICATION.md` defines the raw observations, this document
+`ACTIVITY_SPECIFICATION.md` defines the raw observations; this specification
 defines the derived facts. The pipeline is:
 
 ```
@@ -22,12 +19,8 @@ observations.ActivityObservation[]
 
 ## Normative Authority
 
-This document is the **normative source** for every `ActivityFacts` field.
-The code in `internal/facts/activity.go` is an **implementation** of this
-specification.
-
-If a fact's derivation, inputs, or semantics change, this document **must be
-updated first**. The code is then updated to match.
+Every `ActivityFacts` field is governed by this specification. The facts layer
+implements it.
 
 ---
 
@@ -171,11 +164,11 @@ lifetime baseline.
 ```
 queryActivityProfile (GraphQL, 1-year window)
         ↓
-normalizeActivityProfile → ActivityObservation[] (Tier 1, kinds: commit/PR/review/issue/aggregate/active_day/contribution_by_repo)
+normalize → ActivityObservation[] (kinds: commit/PR/review/issue/aggregate/active_day/contribution_by_repo)
         ↓
-queryLifetimeBatch (GraphQL, per-year batches)
+lifetime acquisition (GraphQL, per-year batches)
         ↓
-normalizeYearContrib → ActivityObservation[] (Tier 1, kinds: commit/PR/review/issue/aggregate, with Metadata.Year)
+normalize → ActivityObservation[] (kinds: commit/PR/review/issue/aggregate, with Metadata.Year)
         ↓
 ActivityFactsFromObservations([]ActivityObservation, referenceTime)
         ↓
@@ -187,7 +180,7 @@ ActivityFacts
 ```
 ActivityFacts
         ↓
-Profile.ActivityFacts (internal/index/index.go)
+Profile.ActivityFacts
 ```
 
 Raw `ActivityObservation[]` values are NOT stored in `Profile`. They are
@@ -195,34 +188,32 @@ ephemeral acquisition data.
 
 ---
 
-## Certification Checklist
+## Conformance Invariants
 
-Every `ActivityFacts` field must satisfy these gates:
+For every `ActivityFacts` field, the following hold:
 
-1. Exists in this specification with documented purpose and derivation.
-2. Derives exclusively from `ActivityObservation[]` + `referenceTime`.
-3. Derivation is deterministic (same inputs → same outputs).
-4. Formula is documented in this specification.
-5. Edge cases are documented in this specification.
-6. Dedicated unit tests exist in `internal/facts` (canonical activity-fact tests).
-7. No duplicate derivation exists in `RepositoryFacts` or elsewhere.
-8. Downstream consumers (`Profile`, `InspectProjection`) remain unchanged.
+1. It exists in this specification with a documented purpose and derivation.
+2. It derives exclusively from `ActivityObservation[]` + `referenceTime`.
+3. Its derivation is deterministic (same inputs → same outputs).
+4. Its formula is documented in this specification.
+5. Its edge cases are documented in this specification.
+6. No duplicate derivation exists in `RepositoryFacts` or elsewhere.
 
 ---
 
-## Explicitly Out of Scope (v0.8.17)
+## Out of Scope
 
 The following concepts are deliberately excluded from `ActivityFacts`:
 
-| Concept | Reason | Target |
-|---------|--------|--------|
-| Individual event facts | No per-event observations in Tier 1 | Post-v0.8.17 |
-| Discussion participation | No discussion activity observation | Post-v0.8.17 |
-| Release participation | No release activity observation | Post-v0.8.17 |
-| Review quality metrics | Requires per-review state data | Post-v0.8.17 |
-| PR merge rate | Requires per-PR state data | Post-v0.8.17 |
-| Time-of-day patterns | Requires per-event timestamps | Post-v0.8.17 |
-| Weekday/weekend patterns | Requires per-event timestamps | Post-v0.8.17 |
-| Trend analysis (increasing/decreasing) | Requires 3+ years of data with trend | Post-v0.8.17 |
-| Comparison to peers | Requires multi-profile evaluation | v0.9.0+ |
-| Scoring/normalization (0–99) | Belongs in future signal redesign | v0.9.0+ |
+| Concept | Reason |
+|---------|--------|
+| Individual event facts | No per-event observations acquired |
+| Discussion participation | No discussion activity observation |
+| Release participation | No release activity observation |
+| Review quality metrics | Requires per-review state data |
+| PR merge rate | Requires per-PR state data |
+| Time-of-day patterns | Requires per-event timestamps |
+| Weekday/weekend patterns | Requires per-event timestamps |
+| Trend analysis (increasing/decreasing) | Requires multi-year trend data |
+| Comparison to peers | Requires multi-profile evaluation |
+| Scoring/normalization (0–99) | Belongs to interpretation layers |

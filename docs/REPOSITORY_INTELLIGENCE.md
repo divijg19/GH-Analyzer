@@ -1,8 +1,7 @@
 # Repository Intelligence
 
-*Layer: Repository Intelligence (v0.9.0)*
-*Status: Normative. Frozen.*
-*Owner: `internal/repositoryintelligence`. Canonical consumer: `atlas intelligence` (via Candidate Intelligence aggregation).*
+*Layer: Repository Intelligence*
+*Canonical consumer: Candidate Intelligence, which aggregates it across a portfolio.*
 
 ---
 
@@ -15,10 +14,9 @@ is and how it behaves* — distinct from *who built it* (Candidate Intelligence)
 
 Repository Intelligence is the second interpretive layer in the Atlas ontology. It
 sits directly above the repository facts family and below Candidate Intelligence,
-which aggregates it across a portfolio. This is the structure GitFut lacked: GitFut
-conflated repository traits with candidate traits. Atlas separates them so that the
-same repository can be interpreted once and aggregated many times (per owner, per
-organization, per project family).
+which aggregates it across a portfolio. Repository traits and candidate traits are
+deliberately separated so that the same repository can be interpreted once and
+aggregated many times (per owner, per organization, per project family).
 
 > **Information Invariant.** Repository Intelligence NEVER introduces information.
 > Every value it reports is a deterministic function of the `RepositoryVestige`
@@ -38,7 +36,7 @@ Out of scope (owned by other layers):
 - *How* the repository evolved over time → Activity Intelligence.
 - Aggregation across a portfolio → Candidate Intelligence (see
   `docs/CANDIDATE_INTELLIGENCE.md`).
-- Relationship inference between repositories → Project Families (v0.10.x).
+- Relationship inference between repositories → Project Families.
 
 ## 3. Pipeline Position
 
@@ -78,6 +76,12 @@ type RepositoryDimension interface {
 - `Summary()` is a deterministic, human-readable sentence derived purely from
   `Evidence()`. Dimension → Evidence → Summary: the summary is a rendering of the
   evidence, never an independent computation.
+
+**Provenance.** Each dimension's evidence names the repository's own observation
+identity and the exact observed fields the dimension interpreted, each carrying
+its acquisition source. Repository Intelligence consumes observations directly,
+so its provenance is observation-level; no second repository fact layer is
+introduced. See [`PROVENANCE.md`](./PROVENANCE.md).
 
 Every dimension also exposes a `Level` (deterministic qualitative classification)
 and a `Confidence` (how much evidence supported the conclusion).
@@ -143,19 +147,19 @@ historical point.
 ## 7. Aggregation Contract (consumed by Candidate Intelligence)
 
 Candidate Intelligence aggregates a slice of `RepositoryIntelligence` (one per
-repository) into its own seven portfolio dimensions. The aggregation is defined in
+repository) into its own portfolio dimensions. The aggregation is defined in
 `docs/CANDIDATE_INTELLIGENCE.md` and is the ONLY way portfolio intelligence is
 produced: Candidate Intelligence does not re-read `RepositoryVestige` directly for
 these dimensions. This keeps a single owner per ontology layer.
 
-Reserved for future layers (not implemented in v0.9.0): Contribution Intelligence,
-User Intelligence, Behavior Intelligence. When added, Candidate Intelligence will
-aggregate those as well.
+Contribution Intelligence, User Intelligence, and Behavior Intelligence are
+sibling interpretive layers Atlas defines but does not compute; Candidate
+Intelligence is their point of aggregation.
 
 ## 8. Forbidden Patterns
 
-- Repository Intelligence MUST NOT import `internal/intelligence` (the aggregation
-  direction is one-way; this prevents an import cycle).
+- Repository Intelligence MUST NOT import the Candidate Intelligence layer (the
+  aggregation direction is one-way; this prevents an import cycle).
 - Repository Intelligence MUST NOT call the GitHub API or any acquisition backend.
 - Repository Intelligence MUST NOT emit a dimension conclusion not backed by
   `Evidence()`.

@@ -1,12 +1,11 @@
 // Package engine owns search query execution, candidate filtering, matching,
 // and result ordering.
 //
-// It defines the Query/Condition model, the Execute entry point, distribution
-// calibration, and the rankingStrategy interface. Engine orchestrates the
-// search path from query to ranked results.
+// Consumes: indicators and evaluation.
 //
-// Engine never acquires observations, derives facts, computes indicators,
-// generates evidence, evaluates candidates, or performs presentation.
+// Produces: the Query/Condition model, the Execute entry point, distribution
+// calibration, and ranked results.
 //
-// Consumed by: search, cmd/atlas.
+// Never owns: observation acquisition, facts derivation, indicator
+// computation, evidence, evaluation policy, or presentation.
 package engine

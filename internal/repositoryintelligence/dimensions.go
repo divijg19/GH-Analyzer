@@ -9,13 +9,13 @@ import (
 // 1. Identity — is this repository clearly identified and distinguishable?
 type IdentityDimension struct {
 	dimensionBase
-	Level        Level
-	Confidence   Confidence
-	HasName      bool
-	HasTopic     bool
-	HasLicense   bool
-	HasDefault   bool
-	Template     bool
+	Level      Level
+	Confidence Confidence
+	HasName    bool
+	HasTopic   bool
+	HasLicense bool
+	HasDefault bool
+	Template   bool
 }
 
 func buildIdentity(rc repoContext) IdentityDimension {
@@ -49,7 +49,7 @@ func buildIdentity(rc repoContext) IdentityDimension {
 		d.Confidence = ConfidenceHigh
 	}
 	d.evidence = []evidence.EvidenceGroup{
-		group("identity",
+		groupFrom(rc, "identity", []string{"Topics", "License", "DefaultBranch", "Template"},
 			factItem("has topic", d.HasTopic),
 			factItem("has license", rc.hasLicense),
 			factItem("has default branch", d.HasDefault),
@@ -63,11 +63,11 @@ func buildIdentity(rc repoContext) IdentityDimension {
 // 2. Health — is this repository alive and receiving attention?
 type HealthDimension struct {
 	dimensionBase
-	Level          Level
-	Confidence     Confidence
-	PushAgeDays    int
-	Stars          int
-	OpenIssues     int
+	Level       Level
+	Confidence  Confidence
+	PushAgeDays int
+	Stars       int
+	OpenIssues  int
 }
 
 func buildHealth(rc repoContext) HealthDimension {
@@ -87,7 +87,7 @@ func buildHealth(rc repoContext) HealthDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("health",
+		groupFrom(rc, "health", []string{"PushedAt", "Stars", "OpenIssues"},
 			factItem("days since last push", rc.pushAgeDays),
 			factItem("stars", d.Stars),
 			factItem("open issues", d.OpenIssues),
@@ -126,7 +126,7 @@ func buildMaintenance(rc repoContext) MaintenanceDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("maintenance",
+		groupFrom(rc, "maintenance", []string{"PushedAt", "Archived", "ReleaseCount"},
 			factItem("days since last push", rc.pushAgeDays),
 			factItem("archived", rc.vestige.Archived),
 			factItem("release count", rc.vestige.ReleaseCount),
@@ -161,7 +161,7 @@ func buildDelivery(rc repoContext) DeliveryDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("delivery",
+		groupFrom(rc, "delivery", []string{"ReleaseCount", "LatestReleaseAt"},
 			factItem("release count", rc.vestige.ReleaseCount),
 			factItem("days since latest release", rc.releaseAgeDays),
 		),
@@ -177,11 +177,11 @@ func buildDelivery(rc repoContext) DeliveryDimension {
 // 5. Architecture — how is this repository structured?
 type ArchitectureDimension struct {
 	dimensionBase
-	Level        Level
-	Confidence   Confidence
-	Size         int
+	Level         Level
+	Confidence    Confidence
+	Size          int
 	LanguageCount int
-	PrimaryLang  string
+	PrimaryLang   string
 }
 
 func buildArchitecture(rc repoContext) ArchitectureDimension {
@@ -203,7 +203,7 @@ func buildArchitecture(rc repoContext) ArchitectureDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("architecture",
+		groupFrom(rc, "architecture", []string{"Size", "LanguageDistribution"},
 			factItem("size (KB)", rc.vestige.Size),
 			factItem("language count", rc.languageCount),
 			factItem("primary language", d.PrimaryLang),
@@ -242,7 +242,7 @@ func buildTechnology(rc repoContext) TechnologyDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("technology",
+		groupFrom(rc, "technology", []string{"LanguageDistribution"},
 			factItem("language count", rc.languageCount),
 			factItem("primary language", d.PrimaryLang),
 			factItem("languages", fmt.Sprintf("%v", rc.rankedLangs)),
@@ -255,13 +255,13 @@ func buildTechnology(rc repoContext) TechnologyDimension {
 // 7. Community — how much external engagement does this repository attract?
 type CommunityDimension struct {
 	dimensionBase
-	Level           Level
-	Confidence      Confidence
-	Forks           int
-	Watchers        int
-	Collaborators   int
-	PullRequests    int
-	Discussions     bool
+	Level         Level
+	Confidence    Confidence
+	Forks         int
+	Watchers      int
+	Collaborators int
+	PullRequests  int
+	Discussions   bool
 }
 
 func buildCommunity(rc repoContext) CommunityDimension {
@@ -283,7 +283,7 @@ func buildCommunity(rc repoContext) CommunityDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("community",
+		groupFrom(rc, "community", []string{"Forks", "Watchers", "CollaboratorCount", "PullRequestCount", "DiscussionEnabled"},
 			factItem("forks", rc.vestige.Forks),
 			factItem("watchers", rc.vestige.Watchers),
 			factItem("collaborators", rc.vestige.CollaboratorCount),
@@ -326,7 +326,7 @@ func buildDocumentation(rc repoContext) DocumentationDimension {
 	d.Level = levelFromRatio(ratio, 0.75, 0.4)
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("documentation",
+		groupFrom(rc, "documentation", []string{"Topics", "License", "DiscussionEnabled"},
 			factItem("has topic", rc.topicCount > 0),
 			factItem("has license", rc.hasLicense),
 			factItem("discussions enabled", rc.vestige.DiscussionEnabled),
@@ -372,7 +372,7 @@ func buildQuality(rc repoContext) QualityDimension {
 	d.Level = levelFromRatio(ratio, 0.75, 0.4)
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("quality",
+		groupFrom(rc, "quality", []string{"License", "DefaultBranchProtected", "CollaboratorCount", "DiscussionEnabled"},
 			factItem("has license", rc.hasLicense),
 			factItem("default branch protected", rc.vestige.DefaultBranchProtected),
 			factItem("collaborators", rc.vestige.CollaboratorCount),
@@ -410,7 +410,7 @@ func buildComplexity(rc repoContext) ComplexityDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("complexity",
+		groupFrom(rc, "complexity", []string{"Size", "LanguageDistribution"},
 			factItem("size (KB)", rc.vestige.Size),
 			factItem("language count", rc.languageCount),
 		),
@@ -450,7 +450,7 @@ func buildLifecycle(rc repoContext) LifecycleDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("lifecycle",
+		groupFrom(rc, "lifecycle", []string{"CreatedAt", "Archived", "ReleaseCount", "Template"},
 			factItem("age (days)", rc.ageDays),
 			factItem("archived", rc.vestige.Archived),
 			factItem("release count", rc.vestige.ReleaseCount),
@@ -464,12 +464,12 @@ func buildLifecycle(rc repoContext) LifecycleDimension {
 // 12. Governance — how is this repository owned and protected?
 type GovernanceDimension struct {
 	dimensionBase
-	Level            Level
-	Confidence       Confidence
-	Collaborators    int
-	BranchProtected  bool
-	Visibility       string
-	Fork             bool
+	Level           Level
+	Confidence      Confidence
+	Collaborators   int
+	BranchProtected bool
+	Visibility      string
+	Fork            bool
 }
 
 func buildGovernance(rc repoContext) GovernanceDimension {
@@ -490,7 +490,7 @@ func buildGovernance(rc repoContext) GovernanceDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("governance",
+		groupFrom(rc, "governance", []string{"CollaboratorCount", "DefaultBranchProtected", "Visibility", "Fork"},
 			factItem("collaborators", rc.vestige.CollaboratorCount),
 			factItem("default branch protected", rc.vestige.DefaultBranchProtected),
 			factItem("visibility", rc.vestige.Visibility),
@@ -504,14 +504,14 @@ func buildGovernance(rc repoContext) GovernanceDimension {
 // 13. Risk — how fragile or at-risk is this repository?
 type RiskDimension struct {
 	dimensionBase
-	Level         Level
-	Confidence    Confidence
-	Flags         int
-	Archived      bool
-	Stale         bool
-	SingleOwner   bool
-	NoLicense     bool
-	IsFork        bool
+	Level       Level
+	Confidence  Confidence
+	Flags       int
+	Archived    bool
+	Stale       bool
+	SingleOwner bool
+	NoLicense   bool
+	IsFork      bool
 }
 
 func buildRisk(rc repoContext) RiskDimension {
@@ -551,7 +551,7 @@ func buildRisk(rc repoContext) RiskDimension {
 	}
 	d.Confidence = ConfidenceHigh
 	d.evidence = []evidence.EvidenceGroup{
-		group("risk",
+		groupFrom(rc, "risk", []string{"Archived", "PushedAt", "CollaboratorCount", "License", "Fork"},
 			factItem("archived", d.Archived),
 			factItem("stale (no push >365d)", d.Stale),
 			factItem("single owner", d.SingleOwner),

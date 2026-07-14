@@ -40,3 +40,18 @@ type ActivityObservation struct {
 	OccurredAt time.Time
 	Metadata   ActivityMetadata
 }
+
+// ObservationID returns the deterministic, Atlas-owned identity of this activity
+// observation. Identity is constructed from the observation kind, its repository
+// (if any) and its occurrence instant, which together uniquely and stably
+// identify an activity observation across executions.
+func (o ActivityObservation) ObservationID() string {
+	id := string(o.Kind)
+	if o.Repository != "" {
+		id += ":" + o.Repository
+	}
+	if !o.OccurredAt.IsZero() {
+		id += "@" + o.OccurredAt.UTC().Format(time.RFC3339)
+	}
+	return id
+}

@@ -1,25 +1,17 @@
 # Atlas Activity Observation Specification
 
-This document is the **canonical activity observation specification** for
-Atlas. It defines the `ActivityObservation` model, its kinds, its acquisition
-mechanisms, and its observation catalogue.
+The `ActivityObservation` model, its kinds, its acquisition mechanisms, and its
+observation catalogue are defined by this specification.
 
-It is the specification for **v0.8.17: Activity Intelligence**.
-
-Where `ACTIVITY_INTELLIGENCE.md` defines the derived facts, this document
-defines the raw observations from which those facts derive.
+`ACTIVITY_INTELLIGENCE.md` defines the derived facts; this specification defines
+the raw observations from which those facts derive.
 
 ---
 
 ## Normative Authority
 
-This document is the **normative source** for all activity observation
-acquisition decisions. The code in `internal/acquisition/` is an
-**implementation** of this specification.
-
-If an observation's kind, acquisition path, or metadata changes, this document
-**must be updated first**. No code change that alters activity observation
-semantics is valid without a corresponding change to this specification.
+Activity observation acquisition is governed by this specification. The
+acquisition layer implements it.
 
 ---
 
@@ -56,15 +48,9 @@ Equivalent activity state must always produce equivalent
 
 ### Provider Independence
 
-`ActivityObservation` has no provider-specific fields. GitHub-specific types
-never leave `internal/acquisition`. The model is designed for future providers.
-
-### Current Package Placement
-
-The v0.8.17 implementation colocates activity observations and activity facts
-with `internal/facts` (canonical home for facts). That is an implementation
-detail, not
-an architectural statement about long-term ownership.
+`ActivityObservation` has no provider-specific fields. Provider-specific types
+never leave the acquisition layer. A new provider requires only new acquisition
+mappings, never a change to the observation model.
 
 ---
 
@@ -148,19 +134,7 @@ Every `ActivityMetadata` field has a deterministic zero value:
 
 ## Observation Catalogue
 
-### Existing Observations (from v0.8.15 contributions)
-
-| # | Observation | Kind | Semantic Purpose | Status |
-|---|-------------|------|------------------|--------|
-| 1 | PullRequestCount (total) | `pull_request` | Total user PRs (REST search API) | **Existing** — migrate to GraphQL |
-| 2 | IssueCount (total) | `issue` | Total user issues (REST search API) | **Existing** — migrate to GraphQL |
-
-These are acquired via `internal/acquisition/contributions.go` using the
-GitHub search API. They will be **migrated** to GraphQL-acquired
-`ActivityObservation` in v0.8.17. The REST-based `ContributionsDTO` is
-deprecated.
-
-### Tier 1 Observations
+### Active Observations
 
 | # | Observation | Kind | Semantic Purpose | Owner | Canonical Acquisition | Merge Policy | Fallback | Nullable | Degradation |
 |---|-------------|------|------------------|-------|----------------------|--------------|----------|----------|-------------|
@@ -178,15 +152,18 @@ deprecated.
 | 14 | YearlyIssueCount | `issue` | Issues in a specific year | Atlas | GraphQL per-year batch | GraphQL authoritative | 0 | No | Defaults to 0 |
 | 15 | YearlyPrivateCount | `aggregate` | Private activity in a specific year | Atlas | GraphQL per-year batch | GraphQL authoritative | 0 | No | Defaults to 0 |
 
-### Tier 2 Observations (Deferred)
+### Observations Atlas Does Not Own
 
-| # | Observation | Kind | Notes | Target |
-|---|-------------|------|-------|--------|
-| 16 | CommitDetails (per-commit) | `commit` | Individual commit SHA, message, timestamp | Post-v0.8.17 |
-| 17 | PRDetails (per-PR) | `pull_request` | Individual PR title, body, timeline | Post-v0.8.17 |
-| 18 | ReviewDetails (per-review) | `review` | Individual review state, comments | Post-v0.8.17 |
-| 19 | DiscussionDetails (per-discussion) | `discussion` | Discussion title, category, comments | Post-v0.8.17 |
-| 20 | ReleaseDetails (per-release) | `release` | Release name, tag, prerelease flag | Post-v0.8.17 |
+The following observations lie outside Atlas's activity model. They are recorded
+here to make the boundary of that model explicit.
+
+| # | Observation | Kind | Notes |
+|---|-------------|------|-------|
+| 16 | CommitDetails (per-commit) | `commit` | Individual commit SHA, message, timestamp |
+| 17 | PRDetails (per-PR) | `pull_request` | Individual PR title, body, timeline |
+| 18 | ReviewDetails (per-review) | `review` | Individual review state, comments |
+| 19 | DiscussionDetails (per-discussion) | `discussion` | Discussion title, category, comments |
+| 20 | ReleaseDetails (per-release) | `release` | Release name, tag, prerelease flag |
 
 ### Rejected Observations
 
@@ -207,7 +184,7 @@ deprecated.
 #### Profile Activity Query (1-year window)
 
 Acquired via `contributionsCollection` on the base `user` query. This is the
-primary acquisition path for Tier 1 observations 3–9.
+primary acquisition path for active observations 3–9.
 
 ```graphql
 query ActivityProfile($login: String!) {
@@ -275,7 +252,7 @@ query LifetimeActivity($login: String!) {
 
 ### Merge Policy
 
-All Tier 1 activity observations are **GraphQL-authoritative**. REST cannot
+All active activity observations are **GraphQL-authoritative**. REST cannot
 produce these observations (the search API returns totals, not windowed
 counts). Merge is trivially the GraphQL value.
 
@@ -290,38 +267,26 @@ If the GraphQL activity query fails:
 | Contribution by repo (9) | Empty slice | Breadth/depth metrics are zero |
 | Lifetime/yearly (10–15) | Default to 0 | Lifetime cadence unavailable |
 
-Observations 1–2 (existing REST-based) remain as fallbacks for total counts
-but are deprecated in favour of GraphQL activity observations.
-
 ---
 
 ## Acquisition Implementation
-
-### New Files
-
-```
-internal/acquisition/
-    activity_types.go     ActivityKind, ActivityObservation, ActivityMetadata
-    graphql_activity.go   FetchActivityObservations, ActivityGraphQL queries
-    normalize_activity.go ActivityObservation normalization
-```
 
 ### Implementation Constraints
 
 Every acquisition query exists because this specification requires it. No
 speculative additions. No GraphQL query is added without a corresponding row
-in the Tier 1 table above.
+in the active-observation table above.
 
 ### Pagination
 
-Cursor-based pagination is not needed for Tier 1. The 1-year
+Cursor-based pagination is not needed for the active observations. The 1-year
 `contributionsCollection` is a single object (not a connection). Lifetime
 queries are batched 4 years per request with retry.
 
 ### Incremental Acquisition
 
-Designed for future incremental sync. The `OccurredAt` field supports future
-`since` parameters. Do not implement synchronization in v0.8.17.
+Atlas acquires activity in full on each execution. It does not perform
+incremental synchronization.
 
 ---
 
@@ -334,8 +299,6 @@ import "time"
 
 // ActivityKind is the canonical kind of an activity observation.
 // Every kind corresponds to a type of observable developer activity.
-// Kinds are extensible: new values must be added to this type and
-// documented in ACTIVITY_SPECIFICATION.md before implementation.
 type ActivityKind string
 
 const (
@@ -399,35 +362,33 @@ type ActivityMetadata struct {
 
 ---
 
-## Observation Certification Checklist
+## Observation Conformance Invariants
 
-Every Tier 1 observation must satisfy these gates before v0.8.17 certification:
+For every activity observation, the following hold:
 
 1. Kind is defined in `ActivityKind`.
-2. Canonical acquisition mechanism is documented (GraphQL query + field).
-3. Deterministic normalization path exists in `internal/acquisition`.
-4. Graceful degradation is documented and implemented.
-5. Unit tests cover normalization.
-6. `ActivityObservation` values are serializable.
-7. This specification is the normative source for the observation.
-8. No downstream package references GraphQL DTOs or provider mechanisms.
+2. One canonical acquisition mechanism is documented (GraphQL query + field).
+3. One deterministic normalization path exists in the acquisition layer.
+4. Graceful degradation is documented.
+5. `ActivityObservation` values are serializable.
+6. This specification is the normative source for the observation.
+7. No downstream layer references GraphQL DTOs or provider mechanisms.
 
 ---
 
-## Out of Scope (Frozen Layers)
+## Out of Scope
 
-The following are untouched in v0.8.17:
+Activity acquisition owns none of the following:
 
-- `RepositoryVestige` — frozen (no new fields)
-- `RepositoryFacts` — frozen (no new fields)
-- `Signals` / `Indicators` — frozen (no changes)
-- `Evaluation` — frozen
-- `Engine` / `Search` / `Ranking` — frozen
-- `Projection` — frozen
-- CLI behaviour — frozen
-- Individual event storage/indexing — deferred
-- Multi-provider acquisition — deferred
-- Live synchronization — deferred
+- `RepositoryVestige` — acquisition introduces no repository observations
+- `RepositoryFacts` — acquisition owns no repository facts
+- `Signals` / `Indicators` — acquisition owns no indicators
+- `Evaluation` — acquisition owns no scoring policy
+- `Projection` — acquisition owns no presentation shape
+- CLI behaviour — acquisition owns no presentation surface
+- Individual event storage or indexing
+- Multi-provider acquisition
+- Live synchronization
 
-v0.8.17 exists solely to define, acquire, and derive Activity Intelligence.
-It changes nothing in the downstream layers.
+The activity layer exists solely to define, acquire, and derive Activity
+Intelligence. It changes nothing in the downstream layers.

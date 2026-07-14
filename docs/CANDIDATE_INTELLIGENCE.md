@@ -1,19 +1,17 @@
 # Atlas Candidate Intelligence Specification
 
-**Version**: v0.9.0
-**Status**: Frozen normative specification
-**Authority**: This document is the single source of truth for Candidate
-Intelligence. All code in `internal/intelligence/` implements this contract.
-Nothing outside this document defines Candidate Intelligence.
+**Status**: Normative
+**Authority**: This is the single source of truth for Candidate Intelligence.
+Nothing outside it defines Candidate Intelligence.
 
 ---
 
 ## 1. Philosophy
 
-Atlas v0.8 built a deterministic engineering pipeline: Observations flow into
+Atlas builds a deterministic engineering pipeline: Observations flow into
 Facts, Indicators, Evidence, and Evaluation, aggregated into a `Profile`.
-v0.9.0 graduates that pipeline into a **domain model for understanding software
-engineers**.
+Candidate Intelligence graduates that pipeline into a **domain model for
+understanding software engineers**.
 
 Candidate Intelligence is the layer where Atlas stops describing *what was
 observed* and begins stating *what the observations mean*.
@@ -31,11 +29,11 @@ measurement.
 ## 3. Pipeline
 
 ```
-Observations → Facts → Indicators → Evidence → Evaluation → Profile   (v0.8, frozen)
+Observations → Facts → Indicators → Evidence → Evaluation → Profile
                              ↓
-                    Candidate Intelligence   (v0.9.0, this layer)
+                    Candidate Intelligence   (this layer)
                              ↓
-                       Projection            (presentation only)
+                        Projection            (presentation only)
 ```
 
 Candidate Intelligence consumes a `Profile` and produces a
@@ -105,12 +103,12 @@ Candidate Intelligence must **never**:
 - depend on GitHub or any provider
 - emit heuristic, probabilistic, or non-deterministic output
 
-These responsibilities belong to their respective v0.8 layers or to consumers
+These responsibilities belong to their respective pipeline layers or to consumers
 (search, projection). The intelligence layer is pure synthesis.
 
 ## 7. Intelligence Dimensions
 
-### 7.1 Implemented (v0.9.0)
+### 7.1 Implemented
 
 | # | Dimension | Core question |
 |---|-----------|---------------|
@@ -128,47 +126,42 @@ These responsibilities belong to their respective v0.8 layers or to consumers
 > one score. Breadth measures *diversity* (how many distinct technologies);
 > Focus measures *concentration* (how dominant a single technology is). A
 > candidate can be both broad and focused, or neither. Preserving both is the
-> kind of semantic distinction v0.9.0 exists to capture.
+> kind of semantic distinction this layer exists to capture.
 
 > **Naming note — Portfolio, not Experience.** Atlas observes repositories,
 > engineering history, maintenance, continuity, and project evolution. It does
 > **not** observe years employed, promotions, company history, or seniority.
-> "Experience" would falsely imply career knowledge Atlas lacks. The name
-> **Portfolio Intelligence** is frozen.
+> "Experience" would falsely imply career knowledge Atlas lacks. The canonical
+> name is **Portfolio Intelligence**.
 
 Each dimension aggregates `RepositoryIntelligence` across `Profile.Repositories`
 (see `docs/REPOSITORY_INTELLIGENCE.md`). Candidate Intelligence is a pure
-aggregation layer: it does not read repository facts directly. This is the
-restructure agreed for v0.9.0 — Repository Intelligence is the single owner of
-repository interpretation; Candidate Intelligence combines it into a portfolio
-view.
+aggregation layer: it does not read repository facts directly. Repository
+Intelligence is the single owner of repository interpretation; Candidate
+Intelligence combines it into a portfolio view.
 
-### 7.2 Reserved (no v0.9.0 implementation)
+### 7.2 Growth Intelligence
 
-| Dimension | Status | Meaning |
-|-----------|--------|---------|
-| **Growth Intelligence** | Reserved | Atlas already believes this concept exists. It simply lacks sufficient evidence: historical candidate snapshots are not yet stored. Implementation deferred to v0.10.x+ when snapshot storage exists. |
-
-`Reserved` is a distinct state from `Future` or `Deferred`. It means the
-ontology already accommodates the dimension; only evidence is missing. The
-`CandidateIntelligence` struct may reserve a field for it (e.g.
-`Growth *GrowthIntelligence`) but must not populate it in v0.9.0, and must not
-substitute a weak point-in-time proxy.
+Atlas defines Growth Intelligence — how a candidate's portfolio changes over
+time — as a dimension of the ontology, but **intentionally does not compute it**.
+Growth requires historical observations of the same candidate at different
+instants, and Atlas observes a candidate only at a single instant. Atlas does not
+substitute a weak point-in-time proxy for a measurement it cannot make from a
+single observation. The ontology accommodates the dimension; the evidence for it
+does not exist within a single observation.
 
 ## 8. Dimension Contract
 
 Every dimension satisfies the same normative contract:
 
 ```
-Name()    string                  // stable dimension identifier
-Evidence() []evidence.EvidenceGroup // the deterministic basis for the conclusion
-Summary()  string                 // one deterministic rendering of the evidence
+Name()     → stable dimension identifier
+Evidence() → the deterministic basis for the conclusion (a set of evidence groups)
+Summary()  → one deterministic rendering of the evidence
 ```
 
-Whether this is expressed as a Go `interface` or via structural embedding is an
-implementation choice (Phase 3). The *contract* is mandatory: every dimension
-exposes exactly these three capabilities, and `Summary` is derived solely from
-`Evidence`.
+The contract is mandatory: every dimension exposes exactly these three
+capabilities, and `Summary` is derived solely from `Evidence`.
 
 ## 9. Evidence and Summary are distinct products
 
@@ -329,54 +322,26 @@ Each implemented dimension defines, at minimum:
 - Every `Summary` is assembled **deterministically** from `Evidence`.
 - No LLM, no generated prose, no probabilistic language ("likely", "probably").
 - Every sentence is traceable to a specific `Evidence` item.
-- Summary templates are fixed strings with value interpolation; they live in
-  `internal/intelligence` and are covered by tests for stability.
+- Summary templates are fixed strings with value interpolation.
 - Projection may reformat `Summary` for display but must not alter its meaning.
 
-## 12. Certification Criteria
+**Provenance.** Every candidate dimension's evidence records which repositories
+contributed and which repository intelligence dimensions were consumed.
+Aggregation reorganizes knowledge; it never flattens it. Deeper provenance —
+each repository's supporting evidence, indicators, facts, and observations — is
+reached by navigating from a repository reference into the repository
+intelligence view, so no provenance is duplicated at the portfolio level. See
+[`PROVENANCE.md`](./PROVENANCE.md).
 
-The release is complete only if **all** hold:
+## 12. Out of Scope
 
-1. **Ontology Integrity** — Candidate Intelligence introduces no new Observations, Facts, Indicators, or Evaluation policy. Pure synthesis.
-2. **Information Invariant** — Every emitted value traces to Observation/Fact/Indicator/Evidence/Evaluation. (§5.1)
-3. **GitFut Assimilation Complete** — Adopted lenses formalized into this spec; rejected concepts confined to `.opencode` research, never in product.
-4. **Explainability** — Every dimension traces through Evidence to its origin; no opaque reasoning.
-5. **Projection Purity** — Projection consumes `CandidateIntelligence`, performs presentation only, reconstructs no domain logic.
-6. **Determinism** — Identical `Profile` + `referenceTime` ⇒ byte-identical output (1000-iteration test).
-7. **Dimension Contract** — Every dimension exposes `Name()`, `Evidence()`, `Summary()`.
-8. **Reserved Integrity** — `Growth` is reserved; not populated; no proxy.
-9. **Repository Discipline** — No migration artifacts, audit reports, or research notes in the product tree; only canonical documentation persists.
-10. **Engineering Validation** — `gofmt`, `go vet`, `staticcheck`, `golangci-lint`, `go test -race`, `go build` all pass.
-
-## 13. Testing Strategy
-
-Verify architectural contracts, not coverage:
-
-- deterministic synthesis (byte-identical across 1000 runs)
-- reference-time handling (past `referenceTime` yields past interpretation)
-- explainability consistency (Summary derivable from Evidence)
-- dimension invariants (bounds, information-origin)
-- edge cases (empty Profile, zero denominators, missing sub-fields)
-- zero-input behaviour
-- compatibility boundaries (no downward/sideways imports)
-- projection consumes intelligence only
-
-Every dimension has dedicated invariant tests.
-
-## 14. Out of Scope (v0.9.0)
+Candidate Intelligence does not own:
 
 - New Observations, Facts, Indicators, or Evaluation policy.
-- GraphQL, REST, or acquisition changes.
-- GitLab / ForgeJo / multi-provider support.
-- AI / LLM / embeddings / probabilistic ranking.
-- Frontend, SVG, cards, or presentation systems.
-- Growth Intelligence implementation (reserved).
-- Historical snapshot storage (enables Growth in v0.10.x+).
+- Acquisition, or any provider or transport concern.
+- Multi-provider support.
+- AI, embeddings, or probabilistic ranking.
+- Presentation systems.
 
-## 15. Roadmap
-
-- **v0.9.0** — Freeze Candidate Intelligence as a semantic layer; implement
-  seven deterministic dimensions; reserve Growth; make explainability a
-  first-class contract.
-- **v0.10.x+** — Snapshot storage → historical profile lineage → Growth
-  Intelligence implementation.
+Atlas intentionally does not compute Growth Intelligence: it requires historical
+observations Atlas does not retain (see §7.2).

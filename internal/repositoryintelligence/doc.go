@@ -1,10 +1,13 @@
-// Package repositoryintelligence provides the deterministic semantic
-// interpretation of a single repository (an observations.RepositoryVestige).
+// Package repositoryintelligence owns the deterministic semantic
+// interpretation of a single repository.
 //
-// It is the second interpretive layer in the Atlas ontology, sitting above the
-// repository facts family and below Candidate Intelligence, which aggregates it
+// Consumes: observations (RepositoryVestige) and the repository facts family.
+//
+// Produces: RepositoryIntelligence dimensions — the second interpretive layer
+// in the Atlas ontology, below Candidate Intelligence, which aggregates it
 // across a portfolio. See docs/REPOSITORY_INTELLIGENCE.md.
 //
-// The package MUST NOT import internal/intelligence (the aggregation direction
-// is one-way) and MUST NOT call any acquisition backend.
+// Never owns: acquisition, or portfolio aggregation. It MUST NOT import the
+// Candidate Intelligence layer (the aggregation direction is one-way) and MUST
+// NOT call any acquisition backend.
 package repositoryintelligence

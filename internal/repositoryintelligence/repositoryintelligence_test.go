@@ -10,26 +10,26 @@ import (
 
 func sampleRepo() observations.RepositoryVestige {
 	return observations.RepositoryVestige{
-		Name:                "atlas",
-		Visibility:          "public",
-		CreatedAt:           time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
-		UpdatedAt:           time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		PushedAt:            time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		LatestReleaseAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		ReleaseCount:        3,
-		License:             "MIT",
-		Topics:              []string{"cli", "git"},
-		DefaultBranch:       "main",
+		Name:                   "atlas",
+		Visibility:             "public",
+		CreatedAt:              time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:              time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		PushedAt:               time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		LatestReleaseAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		ReleaseCount:           3,
+		License:                "MIT",
+		Topics:                 []string{"cli", "git"},
+		DefaultBranch:          "main",
 		DefaultBranchProtected: true,
-		LanguageDistribution: map[string]int64{"Go": 1000, "Shell": 200},
-		OpenIssues:          5,
-		Stars:               120,
-		Forks:               12,
-		Watchers:            60,
-		PullRequestCount:    8,
-		Size:                500,
-		DiscussionEnabled:   true,
-		CollaboratorCount:   4,
+		LanguageDistribution:   map[string]int64{"Go": 1000, "Shell": 200},
+		OpenIssues:             5,
+		Stars:                  120,
+		Forks:                  12,
+		Watchers:               60,
+		PullRequestCount:       8,
+		Size:                   500,
+		DiscussionEnabled:      true,
+		CollaboratorCount:      4,
 	}
 }
 
@@ -97,5 +97,34 @@ func TestBuildRepositoryIntelligenceReferenceTimeSensitive(t *testing.T) {
 
 	if riRecent.Health.Level == riAncient.Health.Level {
 		t.Fatalf("health level should change with reference time: recent=%s ancient=%s", riRecent.Health.Level, riAncient.Health.Level)
+	}
+}
+
+// TestEveryDimensionCarriesObservationProvenance verifies the v0.9.1 invariant:
+// every repository dimension's evidence traces back to the repository's own
+// observation identity and the specific observed fields it interpreted.
+func TestEveryDimensionCarriesObservationProvenance(t *testing.T) {
+	ref := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+	repo := sampleRepo()
+	ri := BuildRepositoryIntelligence(context.Background(), repo, ref)
+
+	for _, d := range ri.Dimensions() {
+		groups := d.Evidence()
+		if len(groups) == 0 {
+			t.Fatalf("dimension %q has no evidence", d.Name())
+		}
+		for _, g := range groups {
+			if len(g.Provenance.Observations) == 0 {
+				t.Fatalf("dimension %q evidence lacks observation provenance", d.Name())
+			}
+			for _, o := range g.Provenance.Observations {
+				if o.ID != repo.ObservationID() {
+					t.Fatalf("dimension %q references observation id %q, want %q", d.Name(), o.ID, repo.ObservationID())
+				}
+				if o.Field == "" || o.Source == "" {
+					t.Fatalf("dimension %q has incomplete observation ref: %+v", d.Name(), o)
+				}
+			}
+		}
 	}
 }

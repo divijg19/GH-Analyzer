@@ -11,11 +11,11 @@ import (
 // Aggregated from per-repository Repository Intelligence.
 type DeliveryIntelligence struct {
 	dimensionBase
-	Level             Level
-	DisciplinedRatio  float64
-	ReleasedRepos     int
-	TotalReleases     int
-	Confidence        Confidence
+	Level            Level
+	DisciplinedRatio float64
+	ReleasedRepos    int
+	TotalReleases    int
+	Confidence       Confidence
 }
 
 func buildDelivery(repos []repositoryintelligence.RepositoryIntelligence) DeliveryIntelligence {
@@ -51,7 +51,7 @@ func buildDelivery(repos []repositoryintelligence.RepositoryIntelligence) Delive
 	dim.Level = levelFromRatio(ratio, 0.5, 0.2)
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("delivery",
+		groupFrom(repos, "delivery", []string{"delivery"},
 			factItem("released repositories", released),
 			factItem("repositories", total),
 			factItem("disciplined repositories", disciplined),

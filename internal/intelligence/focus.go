@@ -85,7 +85,7 @@ func buildFocus(repos []repositoryintelligence.RepositoryIntelligence) FocusInte
 	}
 	dim.Confidence = ConfidenceHigh
 	dim.evidence = []evidence.EvidenceGroup{
-		group("focus",
+		groupFrom(repos, "focus", []string{"technology"},
 			factItem("dominant language", dominant),
 			factItem("dominant share (%)", pct(share)),
 			factItem("distinct primary languages", len(counts)),

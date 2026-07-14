@@ -1,32 +1,21 @@
 # Atlas Observation Specification
 
-This document is the **canonical observation acquisition specification** for
-Atlas. It defines every repository observation Atlas currently understands,
-its single canonical owner (Atlas), its acquisition mechanism, its merge
-policy, its normalization path, and its graceful degradation behaviour.
+Every repository observation Atlas understands has a single canonical owner
+(Atlas), an acquisition mechanism, a merge policy, and a graceful degradation
+behaviour. This specification defines all four for every observation.
 
-It is the specification for **v0.8.15: Deterministic Observation Acquisition**.
-
-Where `INTELLIGENCE.md` defines the ontology (what intelligence is), and
-`ARCHITECTURE.md` defines layer ownership, this document defines the
-acquisition contract (how observations enter Atlas). The three are deliberately
-separate: ontology is stable, architecture is stable, acquisition evolves.
+`INTELLIGENCE.md` defines the ontology (what intelligence is), `ARCHITECTURE.md`
+defines layer ownership, and this specification defines the acquisition contract
+(how observations enter Atlas).
 
 ## Normative Authority
 
-This document is the **normative source** for all observation ownership and
-merge policy decisions. The code in `internal/acquisition/` is an
-**implementation** of this specification.
-
-If a field's owner, acquisition mechanism, or merge policy changes, this
-document **must be updated first**. The code is then updated to match. No
-code change that alters observation ownership or merge behaviour is valid
-without a corresponding change to this specification.
+Observation ownership and merge policy are governed by this specification. The
+acquisition layer implements it.
 
 The merge policy for every field is derived from the ownership documented
-here, never from implementation heuristics (`if graphql != nil`, protocol
-detection, or runtime branching). Each field's table row defines its
-single canonical behaviour. The code implements that behaviour.
+here, never from implementation heuristics (protocol detection or runtime
+branching). Each field's table row defines its single canonical behaviour.
 
 ---
 
@@ -41,8 +30,8 @@ observations. `observations.RepositoryVestige` is the architectural boundary.
 ### Atlas Owns Observations
 
 Atlas owns every observation. Providers never own observations. Protocols
-never own observations. This distinction ensures future providers require only
-new acquisition mappings rather than ontology changes.
+never own observations. A new provider requires only new acquisition mappings,
+never ontology changes.
 
 ### RepositoryVestige = Current Understanding
 
@@ -55,25 +44,35 @@ deliberate: every new observation must justify its existence.
 Equivalent repository state must always produce equivalent `RepositoryVestige`
 values regardless of acquisition mechanism.
 
+### Observation Identity
+
+Every observation carries a deterministic, Atlas-owned identity. A repository
+observation is identified by its normalized repository name; an activity
+observation by its kind, its repository, and its occurrence instant. Identity is
+assigned during normalization and remains stable for identical observations
+across executions. GitHub provides acquisition; Atlas owns identity. Provenance
+references observations by this identity plus a transport-agnostic acquisition
+source. See [`PROVENANCE.md`](./PROVENANCE.md).
+
 ### Backend Isolation
 
-Everything below `internal/acquisition` remains unaware of HTTP, REST,
+Everything below the acquisition layer remains unaware of HTTP, REST,
 GraphQL, pagination, cursors, or DTOs. Everything above
 `RepositoryVestige` remains unaware of acquisition mechanisms.
 
 ### Minimal Abstraction
 
-No planners, routing frameworks, provider registries, generic executors, or
-future-provider interfaces. Atlas currently supports one provider (GitHub)
-with two acquisition mechanisms (REST and GraphQL). Design for exactly that.
+Atlas defines no planners, routing frameworks, provider registries, generic
+executors, or speculative provider interfaces. Atlas supports one provider
+(GitHub) with two acquisition mechanisms (REST and GraphQL).
 
 ---
 
 ## Current Observation Inventory
 
-The following observations already exist in `RepositoryVestige`. Each is
-currently acquired via the GitHub REST executor and normalized in
-`internal/acquisition/normalize.go`.
+The following observations already exist in the repository observation. Each is
+acquired via the GitHub REST backend and normalized within the acquisition
+layer.
 
 | # | Observation     | Domain       | Semantic Purpose                          | Owner | Canonical Acquisition | Merge Policy          | Fallback           | Nullable | Degradation            |
 | - | --------------- | ------------ | ----------------------------------------- | ----- | --------------------- | --------------------- | ------------------ | -------- | ---------------------- |
@@ -94,18 +93,18 @@ currently acquired via the GitHub REST executor and normalized in
 | 15| Watchers        | Maintenance  | Watcher count                            | Atlas | REST                  | REST authoritative    | None               | No       | Defaults to 0          |
 | 16| Size            | Structure    | Repository size in KB                    | Atlas | REST                  | REST authoritative    | None               | No       | Defaults to 0          |
 
-**Canonical acquisition:** REST via `internal/acquisition`.
-**Normalization:** `normalizeRepo` in `internal/acquisition/normalize.go`.
-**Merge:** All observations are REST-authoritative. No GraphQL overlap exists
-yet, so merge is trivially the REST value. Merge policy is derived from
+**Canonical acquisition:** REST, owned by the acquisition layer.
+**Merge:** All observations are REST-authoritative. Where no GraphQL overlap
+exists, merge is trivially the REST value. Merge policy is derived from
 documented observation ownership, never from implementation heuristics.
 
 ---
 
-## Tier 1 Expansion Candidates (Under Research)
+## GraphQL-Authoritative Observations
 
-The following observations are candidates for v0.8.15. Each is being evaluated
-in Phase 2 (Observation Research) against the acceptance criteria:
+The following observations are acquired via GraphQL, which REST either cannot
+supply or cannot supply practically at profile scale. Each satisfies the
+acceptance criteria for a canonical observation:
 
 * deterministic
 * publicly observable
@@ -113,10 +112,7 @@ in Phase 2 (Observation Research) against the acceptance criteria:
 * broadly useful
 * provider-independent after normalization
 
-They are listed here as **candidates only**. Final acceptance is determined
-by the Phase 2 observation audit (GitFut + REST + GraphQL).
-
-| # | Observation            | Domain       | Semantic Purpose                                 | Owner | Proposed Canonical Acquisition | Merge Policy                 | Fallback         | Nullable | Degradation                |
+| # | Observation            | Domain       | Semantic Purpose                                 | Owner | Canonical Acquisition          | Merge Policy                 | Fallback         | Nullable | Degradation                |
 | - | ---------------------- | ------------ | ------------------------------------------------ | ----- | ------------------------------ | ---------------------------- | ---------------- | -------- | -------------------------- |
 | 17| LanguageDistribution   | Technology   | Map of language → byte percentage               | Atlas | GraphQL                        | GraphQL authoritative        | Empty map       | Yes      | Empty map if absent        |
 | 18a| ReleaseCount           | Timeline     | Total release count                              | Atlas | GraphQL                        | GraphQL authoritative        | 0               | No       | Defaults to 0               |
@@ -127,9 +123,9 @@ by the Phase 2 observation audit (GitFut + REST + GraphQL).
 | 22| CollaboratorCount      | Ownership    | Approximate collaborator count                  | Atlas | GraphQL                        | GraphQL authoritative        | Zero             | No       | Defaults to 0              |
 | 23| DefaultBranchProtected | Technology   | Whether the default branch has protection        | Atlas | GraphQL                        | GraphQL authoritative        | false            | No       | Defaults to false          |
 
-### Acquisition rationale (preliminary)
+### Acquisition rationale
 
-These are provisionally assigned to GraphQL as the canonical acquisition
+These observations are assigned to GraphQL as the canonical acquisition
 mechanism because REST either cannot supply the observation or makes it
 impractical at profile scale:
 
@@ -149,22 +145,18 @@ impractical at profile scale:
 - **DefaultBranchProtected** — Not in the REST repository object. GraphQL
   supplies `branchProtectionRules`.
 
-**Merge:** Every Tier 1 candidate is GraphQL-authoritative with no REST
-fallback because REST cannot produce the observation. Merge policy is derived
-from documented ownership, never from `if graphql != nil` heuristics.
-
-**The Phase 2 audit (GitFut + REST + GraphQL) will confirm or revise these
-assignments.**
+**Merge:** Every observation in this group is GraphQL-authoritative with no REST
+fallback because REST cannot produce it. Merge policy is derived from documented
+ownership, never from runtime protocol-detection heuristics.
 
 ---
 
-## Tier 2 / Tier 3 (Deferred, Documented)
+## Observations Atlas Does Not Own
 
-The following observations are recognised as potentially valuable but
-explicitly deferred. They are documented here so the observation model has a
-known frontier; they are **out of scope for v0.8.15**.
+The following observations lie outside Atlas's observation model. They are
+recorded here to make the boundary of that model explicit.
 
-### Tier 2 (metadata)
+### Metadata
 
 | Observation        | Notes                                             |
 | ------------------ | ------------------------------------------------- |
@@ -175,7 +167,7 @@ known frontier; they are **out of scope for v0.8.15**.
 | Packages           | Package count by ecosystem                       |
 | ProjectsV2         | Project count                                    |
 
-### Tier 3 (rare / enterprise / low-value)
+### Rare / Enterprise / Low-Value
 
 | Observation        | Notes                                             |
 | ------------------ | ------------------------------------------------- |
@@ -187,35 +179,32 @@ known frontier; they are **out of scope for v0.8.15**.
 
 ---
 
-## Observation Certification Checklist
+## Observation Conformance Invariants
 
-For every field in `RepositoryVestige` (current + Tier 1), the following must
-hold before v0.8.15 is certified:
+For every repository observation, the following hold:
 
 1. Owner is Atlas.
 2. One documented canonical acquisition mechanism exists.
 3. One deterministic normalization path exists.
 4. One explicit merge policy exists (derived from observation ownership).
 5. Graceful degradation is documented and implemented.
-6. No downstream package references REST, GraphQL, HTTP, DTOs, pagination, or
+6. No downstream layer references REST, GraphQL, HTTP, DTOs, pagination, or
    provider concepts.
-7. Unit tests cover acquisition and normalization behaviour.
-8. This specification is the normative source for the field's ownership and
-   merge policy. No implementation-level heuristics or precedence rules exist
-   outside this document.
+7. This specification is the normative source for the observation's ownership
+   and merge policy. No implementation-level heuristics or precedence rules
+   exist outside this document.
 
 ---
 
-## Out of Scope (Frozen Layers)
+## Out of Scope
 
-The following layers remain frozen for the v0.8.17 architectural baseline.
-Their canonical packages are documented in `INTELLIGENCE.md` and
-`ARCHITECTURE.md`; respecting them is part of the release discipline.
+Acquisition owns none of the layers above it. Their ownership is defined in
+`INTELLIGENCE.md` and `ARCHITECTURE.md`; respecting that ownership is part of the
+acquisition contract.
 
-- `facts.RepositoryFacts` — no new fact families
-- `indicators` — frozen; no new indicators
-- `evaluation` — frozen; scoring policy unchanged
-- `engine` — frozen; search execution unchanged
-- `index.Profile` — frozen; profile assembly unchanged
-- `projection` — frozen; presentation shapes unchanged
-- CLI and server endpoints — frozen
+- Facts — acquisition introduces no fact families
+- Indicators — acquisition introduces no indicators
+- Evaluation — acquisition owns no scoring policy
+- Profile — acquisition owns no profile assembly
+- Projection — acquisition owns no presentation shape
+- CLI and server endpoints — acquisition owns no presentation surface

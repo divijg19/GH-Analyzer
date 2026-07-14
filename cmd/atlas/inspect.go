@@ -19,6 +19,7 @@ func runInspect(args []string) error {
 	fs.Usage = func() { printInspectHelp(fs.Output()) }
 	datasetPath := fs.String("dataset", defaultDatasetPath, "dataset file")
 	jsonOutput := fs.Bool("json", false, "output JSON")
+	showProvenance := fs.Bool("provenance", false, "show provenance chains in human output")
 
 	stop, err := parseFlagsOrHelp(fs, args)
 	if err != nil {
@@ -55,7 +56,7 @@ func runInspect(args []string) error {
 	if *jsonOutput {
 		return writeJSON(proj)
 	}
-	printInspectProjection(proj)
+	printInspectProjection(proj, *showProvenance)
 
 	return nil
 }

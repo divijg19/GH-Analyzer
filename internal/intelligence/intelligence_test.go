@@ -166,3 +166,36 @@ func TestReferenceTimeSensitive(t *testing.T) {
 		t.Fatal("portfolio level not computed")
 	}
 }
+
+// TestAggregationPreservesRepositoryProvenance verifies the v0.9.1 invariant:
+// candidate dimensions never flatten explanation. Each dimension retains which
+// repositories and which repository dimensions contributed.
+func TestAggregationPreservesRepositoryProvenance(t *testing.T) {
+	p := sampleProfile(t)
+	ci, err := BuildCandidateIntelligence(context.Background(), p, time.Now())
+	if err != nil {
+		t.Fatalf("BuildCandidateIntelligence: %v", err)
+	}
+
+	wantRepos := len(p.Repositories)
+	for _, d := range ci.Dimensions() {
+		groups := d.Evidence()
+		if len(groups) == 0 {
+			t.Fatalf("dimension %q has no evidence", d.Name())
+		}
+		refs := groups[0].Provenance.Repositories
+		if len(refs) == 0 {
+			t.Fatalf("dimension %q evidence lacks repository provenance", d.Name())
+		}
+		seen := make(map[string]bool)
+		for _, r := range refs {
+			if r.Repository == "" || r.Dimension == "" {
+				t.Fatalf("dimension %q has incomplete repository ref: %+v", d.Name(), r)
+			}
+			seen[r.Repository] = true
+		}
+		if len(seen) != wantRepos {
+			t.Fatalf("dimension %q references %d repositories, want %d", d.Name(), len(seen), wantRepos)
+		}
+	}
+}
