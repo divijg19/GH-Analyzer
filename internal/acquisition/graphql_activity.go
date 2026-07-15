@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -153,7 +154,7 @@ func lifetimeActivityQuery(years []int, currentYear int, nowISO string) string {
 const (
 	githubEpochYear   = 2008
 	lifetimeBatchSize = 4
-	activityTimeoutMS = 8000
+	activityTimeout   = 8 * time.Second
 )
 
 // chunkYears splits a year range into batches for the lifetime query.
@@ -174,6 +175,9 @@ func chunkYears(years []int, size int) [][]int {
 
 // queryActivityProfile executes the profile activity query and returns the DTO.
 func (c *Client) queryActivityProfile(ctx context.Context, login string) (*contributionsCollectionDTO, error) {
+	ctx, cancel := context.WithTimeout(ctx, activityTimeout)
+	defer cancel()
+
 	variables := map[string]any{
 		"login": login,
 	}
@@ -186,7 +190,7 @@ func (c *Client) queryActivityProfile(ctx context.Context, login string) (*contr
 		return nil, fmt.Errorf("failed to marshal activity query: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, graphqlEndpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/graphql", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create activity request: %w", err)
 	}
@@ -194,12 +198,14 @@ func (c *Client) queryActivityProfile(ctx context.Context, login string) (*contr
 
 	resp, err := github.Do(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("GraphQL activity request failed: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrTransient, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GraphQL API returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, classifyGraphQLError(resp.StatusCode, string(body),
+			fmt.Errorf("GraphQL API returned status %d", resp.StatusCode))
 	}
 
 	var gqlResp activityGraphQLResponse
@@ -208,19 +214,23 @@ func (c *Client) queryActivityProfile(ctx context.Context, login string) (*contr
 	}
 
 	if len(gqlResp.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message)
+		return nil, classifyGraphQLError(resp.StatusCode, gqlResp.Errors[0].Message,
+			fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message))
 	}
 
 	if gqlResp.Data.User == nil {
-		return nil, fmt.Errorf("user %s not found", login)
+		return nil, fmt.Errorf("%w: user %s", ErrNotFound, login)
 	}
 
 	return gqlResp.Data.User.Recent, nil
 }
 
 // queryLifetimeBatch executes a single batched lifetime query for a set of years.
-// Returns a map of year alias (e.g., "y2022") to contribution DTO, or nil on failure.
-func (c *Client) queryLifetimeBatch(ctx context.Context, login string, years []int, currentYear int, nowISO string) map[string]*yearContribDTO {
+// It returns a map of year alias (e.g., "y2022") to contribution DTO. Errors are
+// propagated to the caller, which tolerates them at the documented best-effort
+// boundary: lifetime activity is supplementary, and a batch failure must not be
+// silently swallowed.
+func (c *Client) queryLifetimeBatch(ctx context.Context, login string, years []int, currentYear int, nowISO string) (map[string]*yearContribDTO, error) {
 	variables := map[string]any{
 		"login": login,
 	}
@@ -230,35 +240,38 @@ func (c *Client) queryLifetimeBatch(ctx context.Context, login string, years []i
 		Variables: variables,
 	})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to marshal lifetime query: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, graphqlEndpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/graphql", bytes.NewReader(body))
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create lifetime request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := github.Do(ctx, req)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("%w: %v", ErrTransient, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil
+		b, _ := io.ReadAll(resp.Body)
+		return nil, classifyGraphQLError(resp.StatusCode, string(b),
+			fmt.Errorf("GraphQL API returned status %d", resp.StatusCode))
 	}
 
 	var gqlResp lifetimeGraphQLResponse
 	if err := json.NewDecoder(resp.Body).Decode(&gqlResp); err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to decode lifetime response: %w", err)
 	}
 
 	if len(gqlResp.Errors) > 0 {
-		return nil
+		return nil, classifyGraphQLError(resp.StatusCode, gqlResp.Errors[0].Message,
+			fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message))
 	}
 
-	return gqlResp.Data.User
+	return gqlResp.Data.User, nil
 }
 
 // FetchActivityObservations retrieves a user's activity observations from the
@@ -275,7 +288,7 @@ func (c *Client) queryLifetimeBatch(ctx context.Context, login string, years []i
 // returned. Partial data (e.g., profile activity succeeds but lifetime fails)
 // is returned without error.
 func (c *Client) FetchActivityObservations(ctx context.Context, username string) []obs.ActivityObservation {
-	if username == "" {
+	if err := validateUsername(username); err != nil {
 		return nil
 	}
 
@@ -291,17 +304,26 @@ func (c *Client) FetchActivityObservations(ctx context.Context, username string)
 
 	observations := normalizeActivityProfile(recent, username, now)
 
-	// Phase 2: Lifetime activity (all years, best-effort batches)
+	// Phase 2: Lifetime activity (all years, best-effort batches). A single
+	// deadline bounds the whole batch sequence; an individual batch failure is
+	// tolerated (best-effort) without failing the profile.
 	createdYear := githubEpochYear
 	years := make([]int, 0, currentYear-githubEpochYear+1)
 	for y := createdYear; y <= currentYear; y++ {
 		years = append(years, y)
 	}
 
+	batchCtx, batchCancel := context.WithTimeout(ctx, activityTimeout)
+	defer batchCancel()
+
 	batches := chunkYears(years, lifetimeBatchSize)
 	for _, batch := range batches {
-		yearData := c.queryLifetimeBatch(ctx, username, batch, currentYear, nowISO)
-		if yearData == nil {
+		yearData, err := c.queryLifetimeBatch(batchCtx, username, batch, currentYear, nowISO)
+		if err != nil {
+			// Lifetime activity is best-effort: Phase 1 profile activity is the
+			// authoritative signal, so a batch failure is tolerated here at the
+			// documented best-effort boundary rather than failing the whole
+			// observation set. The error is no longer silently swallowed.
 			continue
 		}
 		for _, y := range batch {

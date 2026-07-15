@@ -1,7 +1,5 @@
 package acquisition
 
-const graphqlEndpoint = "https://api.github.com/graphql"
-
 // repoQuery is the GraphQL query for enriching a single repository.
 // It fetches all Tier 1 observation candidates that REST cannot supply.
 const repoQuery = `query($owner: String!, $name: String!) {

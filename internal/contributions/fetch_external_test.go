@@ -124,7 +124,9 @@ func TestFetchContributionsEmptyUsername(t *testing.T) {
 	}
 }
 
-func TestFetchContributionsFirstCallFailsSecondSucceeds(t *testing.T) {
+// TestFetchContributionsTransientServerErrorRecovers verifies a transient 5xx
+// on the first call is retried by the transport and the request recovers.
+func TestFetchContributionsTransientServerErrorRecovers(t *testing.T) {
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -140,8 +142,11 @@ func TestFetchContributionsFirstCallFailsSecondSucceeds(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := newClient(server.URL).FetchContributions(context.Background(), "testuser")
-	if err == nil {
-		t.Fatal("expected error when first call fails")
+	dto, err := newClient(server.URL).FetchContributions(context.Background(), "testuser")
+	if err != nil {
+		t.Fatalf("expected transient 5xx to be retried and recovered, got: %v", err)
+	}
+	if dto == nil {
+		t.Fatal("expected dto, got nil")
 	}
 }

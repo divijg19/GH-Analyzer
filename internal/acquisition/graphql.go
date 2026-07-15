@@ -5,11 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"sync"
 
 	"github.com/divijg19/Atlas/internal/github"
 	obs "github.com/divijg19/Atlas/internal/observations"
 )
+
+// graphqlConcurrency bounds how many repositories are enriched concurrently
+// during GraphQL enrichment. It is a deterministic resource cap, not a tuning
+// parameter: raising it trades memory/connection pressure for lower latency.
+const graphqlConcurrency = 8
 
 // queryRepo executes a single GraphQL repository query and returns the DTO.
 func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRepo, error) {
@@ -26,7 +33,7 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 		return nil, fmt.Errorf("failed to marshal GraphQL request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, graphqlEndpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/graphql", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GraphQL request: %w", err)
 	}
@@ -39,7 +46,9 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GraphQL API returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, classifyGraphQLError(resp.StatusCode, string(body),
+			fmt.Errorf("GraphQL API returned status %d", resp.StatusCode))
 	}
 
 	var gqlResp graphQLResponse
@@ -48,11 +57,12 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 	}
 
 	if len(gqlResp.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message)
+		return nil, classifyGraphQLError(resp.StatusCode, gqlResp.Errors[0].Message,
+			fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message))
 	}
 
 	if gqlResp.Data.Repository == nil {
-		return nil, fmt.Errorf("repository %s/%s not found", owner, name)
+		return nil, fmt.Errorf("%w: repository %s/%s", ErrNotFound, owner, name)
 	}
 
 	return gqlResp.Data.Repository, nil
@@ -71,21 +81,35 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 // fetchGraphQLVestiges does NOT merge with REST data. It is the GraphQL
 // executor only: query → DTO → normalize. Merging is the responsibility of
 // mergeVestiges in merge.go.
+//
+// Enrichment runs with bounded concurrency (graphqlConcurrency): each repo's
+// GraphQL fetch is independent, so fanning out reduces wall-clock latency
+// without changing results. Per-repo failures remain best-effort (the slot is
+// left empty), and order is preserved via indexed assignment. The concurrency
+// bound is a deterministic resource cap, not a tuning parameter.
 func (c *Client) fetchGraphQLVestiges(ctx context.Context, owner string, repos []obs.RepositoryVestige) []obs.RepositoryVestige {
 	partials := make([]obs.RepositoryVestige, len(repos))
 
+	sem := make(chan struct{}, graphqlConcurrency)
+	var wg sync.WaitGroup
 	for i, v := range repos {
 		if v.Name == "" {
 			continue
 		}
+		wg.Add(1)
+		go func(i int, name string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-		repo, err := c.queryRepo(ctx, owner, v.Name)
-		if err != nil {
-			continue
-		}
-
-		partials[i] = normalizeGraphQLRepo(repo)
+			repo, err := c.queryRepo(ctx, owner, name)
+			if err != nil {
+				return
+			}
+			partials[i] = normalizeGraphQLRepo(repo)
+		}(i, v.Name)
 	}
+	wg.Wait()
 
 	return partials
 }

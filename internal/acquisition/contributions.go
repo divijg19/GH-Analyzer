@@ -23,8 +23,8 @@ type searchCountDTO struct {
 // FetchContributions retrieves a user's pull request and issue counts from the
 // GitHub search API.
 func (c *Client) FetchContributions(ctx context.Context, username string) (*ContributionsDTO, error) {
-	if username == "" {
-		return nil, fmt.Errorf("username is required")
+	if err := validateUsername(username); err != nil {
+		return nil, err
 	}
 
 	prCount, err := c.searchCount(ctx, username+"+type:pr")
