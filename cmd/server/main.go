@@ -33,6 +33,12 @@ var (
 	runSearchQuery       = func(idx indexpkg.Index, input string) ([]engine.Result, error) {
 		return searchpkg.Search(idx, input, searchpkg.Options{Limit: 0})
 	}
+	// buildAnalyzeProfile assembles a candidate Profile through the canonical
+	// index layer rather than reaching into acquisition directly, keeping the
+	// server a pure presentation surface.
+	buildAnalyzeProfile = func(ctx context.Context, username string) (indexpkg.Profile, error) {
+		return indexpkg.BuildProfile(ctx, acquisition.NewClient(), username, time.Now())
+	}
 )
 
 type errorResponse struct {
@@ -83,8 +89,13 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	repoDTOs, err := acquisition.NewClient().FetchRepos(ctx, username)
+	// Assemble the candidate Profile through the canonical index layer. The
+	// server is a presentation surface: it never acquires or normalizes
+	// directly (see docs/ARCHITECTURE.md presentation boundary).
+	profile, err := buildAnalyzeProfile(ctx, username)
 	if err != nil {
+		// Acquisition errors surface wrapped as acquisition.APIError; map the
+		// status code to an appropriate HTTP response without leaking transport.
 		var githubAPIError acquisition.APIError
 		if errors.As(err, &githubAPIError) {
 			switch githubAPIError.StatusCode {
@@ -106,8 +117,7 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repos := acquisition.NormalizeRepos(repoDTOs)
-	proj, err := projection.BuildAnalyzeProjection(username, repos, time.Now())
+	proj, err := projection.BuildAnalyzeProjection(username, profile.Repositories, time.Now())
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to build analysis")
 		return

@@ -1,4 +1,4 @@
-# Atlas
+# `Atlas`
 
 Atlas analyzes GitHub users' public repositories and returns deterministic signal-based profiles, enabling search, comparison, and evaluation.
 

@@ -88,8 +88,8 @@ func TestBuildInspectProjection_EvidenceGeneration(t *testing.T) {
 
 	proj := BuildInspectProjection(p)
 
-	if len(proj.Evidence) != 4 {
-		t.Fatalf("expected 4 evidence groups, got %d", len(proj.Evidence))
+	if len(proj.Evidence) != 5 {
+		t.Fatalf("expected 5 evidence groups, got %d", len(proj.Evidence))
 	}
 
 	signalNames := make(map[string]bool)
@@ -314,7 +314,7 @@ func TestBuildInspectProjection_FullIntegration(t *testing.T) {
 	if proj.Contributions == nil || proj.Contributions.TotalContributions != 100 {
 		t.Fatalf("unexpected Contributions")
 	}
-	if len(proj.Evidence) != 4 {
-		t.Fatalf("expected 4 evidence groups, got %d", len(proj.Evidence))
+	if len(proj.Evidence) != 5 {
+		t.Fatalf("expected 5 evidence groups, got %d", len(proj.Evidence))
 	}
 }

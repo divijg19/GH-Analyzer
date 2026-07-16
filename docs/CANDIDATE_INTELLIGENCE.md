@@ -317,6 +317,32 @@ Each implemented dimension defines, at minimum:
 
 > Renamed from "Experience" deliberately — see §7.1 naming note.
 
+#### 10.9.1 Portfolio Intelligence Facts (deterministic aggregates)
+
+The repository facts layer additionally exposes deterministic Portfolio
+Intelligence aggregates directly from the observations already collected
+(no new acquisition, no scoring). Candidate Intelligence surfaces these as
+explanation only; it does not interpret them. See
+[`REPOSITORY_FACTS.md` §6](../REPOSITORY_FACTS.md) for the authoritative
+contract.
+
+- **Inputs**: `RepositoryVestige.Topics`, `Fork`, `ParentRepository`,
+  `CreatedAt`, `LanguageDistribution`, `PushedAt`.
+- **Aggregates**: ranked topics (`RankedTopics`, `TopicUniverse`), fork
+  lineage concentration (`ForkLineage`), all languages per creation year as a
+  lossless observational timeline (`TechnologyTimeline`), and a maintenance
+  recency histogram (`MaintenanceBuckets`).
+- **Invariants**: deterministic given `referenceTime`; observational aggregates
+  only — they answer "what was observed?", not "what does it mean?".
+- **Evidence mapping**: a dedicated **Portfolio evidence group** (not an
+  indicator signal — signals are reserved for the scored families ownership,
+  consistency, depth, activity), with provenance resolving each fact to its
+  observation fields (see [`PROVENANCE.md`](./PROVENANCE.md)).
+- **Deferred**: Project Families. Real family detection requires combining
+  multiple orthogonal observations (naming affinity, shared topics, primary
+  language, repository continuity, ownership/origin). The earlier topic-leading
+  heuristic was a placeholder and has been removed.
+
 ## 11. Explainability Model
 
 - Every `Summary` is assembled **deterministically** from `Evidence`.

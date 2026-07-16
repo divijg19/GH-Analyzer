@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // yearAliasRe extracts the aliased year fields (e.g. "y2022:") from a lifetime
@@ -56,7 +57,7 @@ func TestFetchActivityObservationsUsesConfiguredBaseURL(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClientAt(srv.URL)
-	observations := c.FetchActivityObservations(context.Background(), "octocat")
+	observations := c.FetchActivityObservations(context.Background(), "octocat", time.Time{})
 
 	if len(paths) == 0 {
 		t.Fatal("no requests reached the test server")
@@ -101,7 +102,7 @@ func TestFetchActivityLifetimeBatchPropagatesError(t *testing.T) {
 	c := NewClientAt(srv.URL)
 	// Profile succeeds, so observations are non-empty even though the lifetime
 	// batch failed at the documented best-effort boundary.
-	observations := c.FetchActivityObservations(context.Background(), "octocat")
+	observations := c.FetchActivityObservations(context.Background(), "octocat", time.Time{})
 	if len(observations) == 0 {
 		t.Fatal("profile activity should still yield observations despite a failed lifetime batch")
 	}

@@ -25,7 +25,7 @@ func TestGenerateEvidenceGroupOrder(t *testing.T) {
 	s := indicators.Signals{Ownership: 0.7, Consistency: 0.6, Depth: 0.4, Activity: 1.0}
 
 	groups := GenerateEvidence(f, s)
-	want := []string{indicators.SignalOwnership, indicators.SignalConsistency, indicators.SignalDepth, indicators.SignalActivity}
+	want := []string{indicators.SignalOwnership, indicators.SignalConsistency, indicators.SignalDepth, indicators.SignalActivity, PortfolioGroup}
 	if len(groups) != len(want) {
 		t.Fatalf("expected %d groups, got %d", len(want), len(groups))
 	}

@@ -1,4 +1,4 @@
-package contributions_test
+package acquisition_test
 
 import (
 	"context"

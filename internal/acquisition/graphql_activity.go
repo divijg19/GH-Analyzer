@@ -287,7 +287,25 @@ func (c *Client) queryLifetimeBatch(ctx context.Context, login string, years []i
 // GraphQL is best-effort. If the activity query fails, an empty slice is
 // returned. Partial data (e.g., profile activity succeeds but lifetime fails)
 // is returned without error.
-func (c *Client) FetchActivityObservations(ctx context.Context, username string) []obs.ActivityObservation {
+// FetchActivityObservations retrieves a user's activity observations from the
+// GitHub GraphQL API. It returns canonical observations.ActivityObservation values — no
+// GitHub-specific types leave this function.
+//
+// Observations include:
+//   - 1-year window counts (commits, PRs, reviews, issues, private)
+//   - Active days from the contribution calendar
+//   - Per-repo contribution breakdown
+//   - Lifetime contributions (all years, best-effort)
+//
+// GraphQL is best-effort. If the activity query fails, an empty slice is
+// returned. Partial data (e.g., profile activity succeeds but lifetime fails)
+// is returned without error.
+//
+// createdAt is the account creation time used to bound the lifetime window
+// (queries start at the account's first year, not a fixed epoch, avoiding
+// dead-year queries for young accounts). A zero value falls back to
+// githubEpochYear.
+func (c *Client) FetchActivityObservations(ctx context.Context, username string, createdAt time.Time) []obs.ActivityObservation {
 	if err := validateUsername(username); err != nil {
 		return nil
 	}
@@ -306,9 +324,15 @@ func (c *Client) FetchActivityObservations(ctx context.Context, username string)
 
 	// Phase 2: Lifetime activity (all years, best-effort batches). A single
 	// deadline bounds the whole batch sequence; an individual batch failure is
-	// tolerated (best-effort) without failing the profile.
+	// tolerated (best-effort) without failing the profile. The window starts
+	// at the account's creation year (not a fixed epoch) to avoid querying
+	// dead years for young accounts; a zero createdAt falls back to
+	// githubEpochYear.
 	createdYear := githubEpochYear
-	years := make([]int, 0, currentYear-githubEpochYear+1)
+	if !createdAt.IsZero() {
+		createdYear = createdAt.UTC().Year()
+	}
+	years := make([]int, 0, currentYear-createdYear+1)
 	for y := createdYear; y <= currentYear; y++ {
 		years = append(years, y)
 	}

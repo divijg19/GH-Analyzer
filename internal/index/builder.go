@@ -28,7 +28,7 @@ type ProfileFetcher interface {
 	FetchReposNormalized(ctx context.Context, username string) ([]observations.RepositoryVestige, error)
 	FetchUser(ctx context.Context, username string) (*acquisition.UserDTO, error)
 	FetchContributions(ctx context.Context, username string) (*acquisition.ContributionsDTO, error)
-	FetchActivityObservations(ctx context.Context, username string) []observations.ActivityObservation
+	FetchActivityObservations(ctx context.Context, username string, createdAt time.Time) []observations.ActivityObservation
 }
 
 // BuildProfile assembles a single candidate Profile from the acquisition
@@ -65,8 +65,9 @@ func BuildProfile(ctx context.Context, fetcher ProfileFetcher, username string, 
 
 	contribSummary := acquisition.NormalizeContributions(contribDTO)
 
-	// Activity observations → ActivityFacts
-	activityObs := fetcher.FetchActivityObservations(ctx, username)
+	// Activity observations → ActivityFacts. The account creation year
+	// bounds the lifetime window (no dead-year queries for young accounts).
+	activityObs := fetcher.FetchActivityObservations(ctx, username, meta.CreatedAt)
 	activityFacts := facts.ActivityFactsFromObservations(activityObs, referenceTime)
 
 	signalValues := indicators.ExtractSignalsFromFacts(repoFacts, referenceTime)
