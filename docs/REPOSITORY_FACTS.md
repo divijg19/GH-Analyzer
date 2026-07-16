@@ -171,6 +171,39 @@ values accept `referenceTime` explicitly — no system-clock dependence.
 (`MeanRepoSize` and `TopicBreadth` are averages, grouped under Ratio Facts
 above; they are ratio-class, not age-class.)
 
+### 6. Portfolio Intelligence Aggregates
+
+These facts expose deterministic Portfolio Intelligence directly from the
+repository observations already collected. They are **observational aggregates
+only** — they answer "what was observed or deterministically aggregated?", never
+"what does it mean?". No score, no interpretation, no cross-account comparison.
+Each is derived purely from `RepositoryVestige` fields and is fully reproducible
+for a given `referenceTime`.
+
+| Field | Type | Contract | Edge cases |
+| --- | --- | --- | --- |
+| `RankedTopics` | `[]string` | Topics unionized across the portfolio, ordered by descending portfolio frequency with a lexical tiebreak | `null` when no topics observed |
+| `TopicUniverse` | `int` | Count of distinct topics (`len(RankedTopics)`) | `0` when none |
+| `ForkLineage` | `[]ForkParentFact` | Per-parent fork counts for forked repositories, ordered by descending fork count | `null` when no forks have a recorded parent |
+| `TechnologyTimeline` | `map[int][]string` | All languages (`LanguageDistribution`) observed across repositories created in the same year, preserved per year (lossless; not collapsed to one) | empty when no language data |
+| `MaintenanceBuckets` | `{Active, Recent, Dormant} int` | Count of repositories whose last push falls within `<=90d`, `<=365d`, or beyond `referenceTime` | all zero when no repositories |
+
+`ForkParentFact` is `{Parent string, Forks int}`. `TechnologyTimeline` records
+every language observed at each creation year; it is lossless (all languages
+preserved, none collapsed) and never implies growth, decline, or periodization.
+Higher layers may later derive transitions, diversification, or migrations from it.
+
+These aggregates are surfaced as a dedicated **Portfolio evidence group** in the
+projection layer (distinct from the indicator signals), with provenance resolving
+each fact to the observation fields that produced it (`Topics`, `Fork`,
+`ParentRepository`, `CreatedAt`, `LanguageDistribution`, `PushedAt`).
+
+> **Deferred: Project Families.** Genuine project-family detection requires
+> combining multiple orthogonal observations (naming affinity, shared topics,
+> primary language, repository continuity, ownership/origin). The current
+> topic-leading heuristic was a placeholder and has been removed; real family
+> detection is deferred until a stronger deterministic classifier exists.
+
 ---
 
 ## Excluded Concepts

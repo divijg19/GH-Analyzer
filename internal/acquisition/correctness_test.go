@@ -151,7 +151,7 @@ func TestQueryActivityProfileDeadline(t *testing.T) {
 // TestFetchActivityUsernameValidation verifies activity acquisition validates the
 // username up front and returns no observations for invalid input.
 func TestFetchActivityUsernameValidation(t *testing.T) {
-	if obs := testClient("http://example.invalid").FetchActivityObservations(context.Background(), "@bad"); len(obs) != 0 {
+	if obs := testClient("http://example.invalid").FetchActivityObservations(context.Background(), "@bad", time.Time{}); len(obs) != 0 {
 		t.Errorf("expected no observations for invalid username, got %d", len(obs))
 	}
 }

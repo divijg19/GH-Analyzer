@@ -35,6 +35,10 @@ var repositoryFactObservations = map[string][]string{
 	"total_collaborators":    {"CollaboratorCount"},
 	"protected_branch_repos": {"DefaultBranchProtected"},
 	"discussion_repos":       {"DiscussionEnabled"},
+	"ranked_topics":          {"Topics"},
+	"fork_lineage":           {"Fork", "ParentRepository"},
+	"technology_timeline":    {"CreatedAt", "LanguageDistribution"},
+	"maintenance_buckets":    {"PushedAt"},
 }
 
 // FactProvenance returns the deterministic provenance chain for a single

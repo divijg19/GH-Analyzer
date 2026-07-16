@@ -1,4 +1,4 @@
-package profile_test
+package acquisition_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/divijg19/Atlas/internal/acquisition"
 )
 
-func newClient(baseURL string) *acquisition.Client {
+func newUserClient(baseURL string) *acquisition.Client {
 	return acquisition.NewClientAt(baseURL)
 }
 
@@ -27,7 +27,7 @@ func TestFetchUserMetadataSuccess(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"name":       "Monalisa Octocat",
+			"name":       "Monaisa Octocat",
 			"bio":        "GitHub mascot",
 			"location":   "San Francisco, CA",
 			"company":    "@github",
@@ -38,7 +38,7 @@ func TestFetchUserMetadataSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	dto, err := newClient(server.URL).FetchUser(context.Background(), "octocat")
+	dto, err := newUserClient(server.URL).FetchUser(context.Background(), "octocat")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,8 +51,8 @@ func TestFetchUserMetadataSuccess(t *testing.T) {
 		t.Fatal("expected metadata, got nil")
 	}
 
-	if meta.Name != "Monalisa Octocat" {
-		t.Fatalf("Name = %q, want %q", meta.Name, "Monalisa Octocat")
+	if meta.Name != "Monaisa Octocat" {
+		t.Fatalf("Name = %q, want %q", meta.Name, "Monaisa Octocat")
 	}
 	if meta.Bio != "GitHub mascot" {
 		t.Fatalf("Bio = %q, want %q", meta.Bio, "GitHub mascot")
@@ -92,7 +92,7 @@ func TestFetchUserMetadataEmptyFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	dto, err := newClient(server.URL).FetchUser(context.Background(), "testuser")
+	dto, err := newUserClient(server.URL).FetchUser(context.Background(), "testuser")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestFetchUserMetadataBadJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := newClient(server.URL).FetchUser(context.Background(), "testuser")
+	_, err := newUserClient(server.URL).FetchUser(context.Background(), "testuser")
 	if err == nil {
 		t.Fatal("expected error for bad JSON, got nil")
 	}
@@ -143,14 +143,14 @@ func TestFetchUserMetadataNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := newClient(server.URL).FetchUser(context.Background(), "nonexistent")
+	_, err := newUserClient(server.URL).FetchUser(context.Background(), "nonexistent")
 	if err == nil {
 		t.Fatal("expected error for 404, got nil")
 	}
 }
 
 func TestFetchUserMetadataEmptyUsername(t *testing.T) {
-	_, err := newClient("http://example.invalid").FetchUser(context.Background(), "")
+	_, err := newUserClient("http://example.invalid").FetchUser(context.Background(), "")
 	if err == nil {
 		t.Fatal("expected error for empty username, got nil")
 	}
@@ -162,7 +162,7 @@ func TestFetchUserMetadataServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := newClient(server.URL).FetchUser(context.Background(), "testuser")
+	_, err := newUserClient(server.URL).FetchUser(context.Background(), "testuser")
 	if err == nil {
 		t.Fatal("expected error for 500, got nil")
 	}

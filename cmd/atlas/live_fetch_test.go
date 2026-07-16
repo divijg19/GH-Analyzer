@@ -38,7 +38,7 @@ func (m *mockAcquisitionClient) FetchContributions(_ context.Context, _ string) 
 	return &acquisition.ContributionsDTO{}, nil
 }
 
-func (m *mockAcquisitionClient) FetchActivityObservations(_ context.Context, _ string) []observations.ActivityObservation {
+func (m *mockAcquisitionClient) FetchActivityObservations(_ context.Context, _ string, _ time.Time) []observations.ActivityObservation {
 	return nil
 }
 

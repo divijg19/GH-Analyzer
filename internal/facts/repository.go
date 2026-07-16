@@ -57,6 +57,15 @@ type RepositoryFacts struct {
 	DaysSinceLatestRelease int     `json:"days_since_latest_release"`
 	MeanRepoSize           float64 `json:"mean_repo_size"`
 	TopicBreadth           float64 `json:"topic_breadth"`
+
+	// Portfolio intelligence (deterministic aggregations from RepositoryVestige).
+	// These answer "what was observed or deterministically aggregated?", never
+	// "what does it mean?". Interpretation belongs to higher layers.
+	RankedTopics       []string           `json:"ranked_topics"`
+	TopicUniverse      int                `json:"topic_universe"`
+	ForkLineage        []ForkParentFact   `json:"fork_lineage"`
+	TechnologyTimeline map[int][]string   `json:"technology_timeline"`
+	MaintenanceBuckets MaintenanceBuckets `json:"maintenance_buckets"`
 }
 
 const (
@@ -64,7 +73,28 @@ const (
 	minDepthRepoSize  = 50
 	minConsistencyDen = 10
 	minDepthDen       = 5
+
+	// maintenance window buckets (days since last push), mirroring the
+	// repository-level health/maintenance dimensions.
+	activeWindowDays  = 90
+	dormantWindowDays = 365
 )
+
+// ForkParentFact captures deterministic upstream-lineage concentration: how many
+// of the candidate's repositories fork a given parent. It is a pure
+// aggregation of RepositoryVestige.ParentRepository; it assigns no score.
+type ForkParentFact struct {
+	Parent string `json:"parent"`
+	Forks  int    `json:"forks"`
+}
+
+// MaintenanceBuckets is a deterministic histogram of repository maintenance
+// recency derived from each repository's last-push age.
+type MaintenanceBuckets struct {
+	Active  int `json:"active"`
+	Recent  int `json:"recent"`
+	Dormant int `json:"dormant"`
+}
 
 func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) RepositoryFacts {
 	if len(repos) == 0 {
@@ -94,6 +124,12 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 	var protectedBranchRepos int
 	var discussionRepos int
 
+	// Portfolio-intelligence accumulators.
+	topicCounts := make(map[string]int)
+	forkParents := make(map[string]int)
+	technologyTimeline := make(map[int][]string)
+	var maintenance MaintenanceBuckets
+
 	for i, repo := range repos {
 		if repo.Size > 0 {
 			validRepos++
@@ -116,6 +152,37 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 			if repo.Size >= minDepthRepoSize {
 				deepRepos++
 			}
+		}
+
+		// Portfolio intelligence: deterministic aggregations only.
+		for _, topic := range repo.Topics {
+			if topic != "" {
+				topicCounts[topic]++
+			}
+		}
+		if repo.Fork && repo.ParentRepository != "" {
+			forkParents[repo.ParentRepository]++
+		}
+		// Technology timeline: every language observed across repositories
+		// created in the same year, preserved (not collapsed to one). Recording
+		// all languages keeps the data deterministic and lossless so higher
+		// layers can later derive transitions, diversification, or migrations.
+		if !repo.CreatedAt.IsZero() && len(repo.LanguageDistribution) > 0 {
+			timelineYear := repo.CreatedAt.UTC().Year()
+			for _, lang := range rankLanguages(repo.LanguageDistribution) {
+				if !containsString(technologyTimeline[timelineYear], lang) {
+					technologyTimeline[timelineYear] = append(technologyTimeline[timelineYear], lang)
+				}
+			}
+		}
+		pushAge := daysSince(repo.PushedAt, referenceTime)
+		switch {
+		case pushAge <= activeWindowDays:
+			maintenance.Active++
+		case pushAge <= dormantWindowDays:
+			maintenance.Recent++
+		default:
+			maintenance.Dormant++
 		}
 
 		if repo.Size > largestRepoSize {
@@ -184,6 +251,19 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 
 	rankedLanguages := rankLanguages(languageBytes)
 
+	rankedTopics := rankedTopics(topicCounts)
+
+	forkLineage := make([]ForkParentFact, 0, len(forkParents))
+	for parent, count := range forkParents {
+		forkLineage = append(forkLineage, ForkParentFact{Parent: parent, Forks: count})
+	}
+	sort.Slice(forkLineage, func(i, j int) bool {
+		if forkLineage[i].Forks != forkLineage[j].Forks {
+			return forkLineage[i].Forks > forkLineage[j].Forks
+		}
+		return forkLineage[i].Parent < forkLineage[j].Parent
+	})
+
 	var meanRepoStars float64
 	var forkRatio float64
 	var licensedRatio float64
@@ -240,6 +320,12 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 		DaysSinceLatestRelease: daysSince(latestReleaseAt, referenceTime),
 		MeanRepoSize:           meanRepoSize,
 		TopicBreadth:           topicBreadth,
+
+		RankedTopics:       rankedTopics,
+		TopicUniverse:      len(rankedTopics),
+		ForkLineage:        forkLineage,
+		TechnologyTimeline: technologyTimeline,
+		MaintenanceBuckets: maintenance,
 	}
 }
 
@@ -262,6 +348,41 @@ func rankLanguages(languageBytes map[string]int64) []string {
 	})
 
 	return langs
+}
+
+// rankedTopics unionizes repository topics across the portfolio, ordered by
+// frequency (highest first) with a lexical tiebreak. Deterministic: identical
+// input yields identical output. Mirrors rankLanguages for the topic domain.
+func rankedTopics(topicCounts map[string]int) []string {
+	if len(topicCounts) == 0 {
+		return nil
+	}
+
+	topics := make([]string, 0, len(topicCounts))
+	for topic := range topicCounts {
+		topics = append(topics, topic)
+	}
+
+	sort.Slice(topics, func(i, j int) bool {
+		ci, cj := topicCounts[topics[i]], topicCounts[topics[j]]
+		if ci != cj {
+			return ci > cj
+		}
+		return topics[i] < topics[j]
+	})
+
+	return topics
+}
+
+// containsString reports whether s contains v. Used to deduplicate language
+// entries while preserving per-year order in the technology timeline.
+func containsString(s []string, v string) bool {
+	for _, e := range s {
+		if e == v {
+			return true
+		}
+	}
+	return false
 }
 
 func daysSince(t time.Time, reference time.Time) int {
