@@ -188,6 +188,12 @@ for a given `referenceTime`.
 | `TechnologyTimeline` | `map[int][]string` | All languages (`LanguageDistribution`) observed across repositories created in the same year, preserved per year (lossless; not collapsed to one) | empty when no language data |
 | `MaintenanceBuckets` | `{Active, Recent, Dormant} int` | Count of repositories whose last push falls within `<=90d`, `<=365d`, or beyond `referenceTime` | all zero when no repositories |
 
+`MaintenanceBuckets` is the **portfolio rollup** of the per-repository
+Maintenance dimension's recency windows. Both share the single authoritative
+window constants (`MaintenanceActiveWindowDays` / `MaintenanceDormantWindowDays`
+in `facts`) so the portfolio aggregate and the repository dimension can never
+silently diverge.
+
 `ForkParentFact` is `{Parent string, Forks int}`. `TechnologyTimeline` records
 every language observed at each creation year; it is lossless (all languages
 preserved, none collapsed) and never implies growth, decline, or periodization.

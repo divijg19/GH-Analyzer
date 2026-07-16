@@ -311,8 +311,11 @@ candidates by query conditions.
 - Intelligence computation
 
 Projection is a read-only, deterministic view of the domain for presentation. It
-reshapes domain data into forms optimized for specific consumers. Scored values
-are supplied by Evaluation and reshaped here; they are never recomputed.
+reshapes domain data into forms optimized for specific consumers. Its sole input
+is the canonical Profile assembled by the index layer; it never re-derives
+facts, indicators, or evaluation from raw observations. Scored values are
+supplied by Evaluation (driven from the Profile's canonical signals) and
+reshaped here; they are never recomputed.
 
 ### Presentation
 

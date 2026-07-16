@@ -32,6 +32,11 @@ type EvidenceGroup struct {
 // portfolio group records what was observed/aggregated, not an interpreted score.
 const PortfolioGroup = "portfolio"
 
+// ActivityGroup is the evidence-group label for deterministic Activity Facts.
+// Like PortfolioGroup it is NOT an indicator signal; it records what the
+// activity observations deterministically aggregate, not an interpreted score.
+const ActivityGroup = "activity"
+
 func GenerateEvidence(factsValue facts.RepositoryFacts, s indicators.Signals) []EvidenceGroup {
 	groups := make([]EvidenceGroup, 0, 4)
 	groups = append(groups, EvidenceGroup{Signal: indicators.SignalOwnership, Provenance: indicators.SignalProvenance(indicators.SignalOwnership), Items: []Evidence{{Kind: "fact", Description: fmt.Sprintf("%d of %d repos with content are original", factsValue.ValidOriginalRepos, factsValue.ValidRepos), Value: fmt.Sprintf("%d", factsValue.ValidOriginalRepos)}, {Kind: "signal", Description: fmt.Sprintf("Ownership score: %.2f", s.Ownership), Value: fmt.Sprintf("%.2f", s.Ownership)}}})
@@ -40,6 +45,28 @@ func GenerateEvidence(factsValue facts.RepositoryFacts, s indicators.Signals) []
 	groups = append(groups, EvidenceGroup{Signal: indicators.SignalActivity, Provenance: indicators.SignalProvenance(indicators.SignalActivity), Items: []Evidence{{Kind: "fact", Description: fmt.Sprintf("Latest activity: %s", formatActivityDate(factsValue.LatestActivity)), Value: formatActivityDate(factsValue.LatestActivity)}, {Kind: "signal", Description: fmt.Sprintf("Activity score: %.2f", s.Activity), Value: fmt.Sprintf("%.2f", s.Activity)}}})
 	groups = append(groups, EvidenceGroup{Signal: PortfolioGroup, Provenance: facts.FactsProvenance("ranked_topics", "fork_lineage", "technology_timeline", "maintenance_buckets"), Items: portfolioEvidenceItems(factsValue)})
 	return groups
+}
+
+// GenerateActivityEvidence renders the deterministic Activity Facts as an
+// evidence group. These facts are already computed by the canonical pipeline
+// (index.BuildProfile → facts.ActivityFactsFromObservations) but were not
+// surfaced; this group exposes them without assigning any score.
+func GenerateActivityEvidence(a facts.ActivityFacts) EvidenceGroup {
+	items := []Evidence{
+		{Kind: "fact", Description: "Recent contribution composition (commit/PR/review/issue/private)", Value: fmt.Sprintf("%d/%d/%d/%d/%d", a.RecentCommits, a.RecentPullRequests, a.RecentReviews, a.RecentIssues, a.RecentPrivate)},
+		{Kind: "fact", Description: "Lifetime contribution composition (commit/PR/review/issue/private)", Value: fmt.Sprintf("%d/%d/%d/%d/%d", a.LifetimeCommits, a.LifetimePullRequests, a.LifetimeReviews, a.LifetimeIssues, a.LifetimePrivate)},
+		{Kind: "fact", Description: "Contribution breadth (distinct recent contribution kinds)", Value: fmt.Sprintf("%d", a.ContributionBreadth)},
+		{Kind: "fact", Description: "Repository breadth (repos contributed to)", Value: fmt.Sprintf("%d", a.RepositoryBreadth)},
+		{Kind: "fact", Description: "Active days", Value: fmt.Sprintf("%d", a.ActiveDays)},
+		{Kind: "fact", Description: "Contribution frequency (per active day)", Value: fmt.Sprintf("%.4f", a.ContributionFrequency)},
+		{Kind: "fact", Description: "Contribution recency (recent vs expected per year)", Value: fmt.Sprintf("%.4f", a.ContributionRecency)},
+		{Kind: "fact", Description: "Active years", Value: fmt.Sprintf("%d", a.YearCount)},
+	}
+	return EvidenceGroup{
+		Signal:     ActivityGroup,
+		Provenance: facts.FactsProvenance("recent_commits", "recent_pull_requests", "recent_reviews", "recent_issues", "lifetime_commits", "lifetime_pull_requests", "lifetime_reviews", "lifetime_issues", "contribution_breadth", "repository_breadth", "active_days", "contribution_frequency", "contribution_recency", "activity_cadence", "repository_depth", "year_count", "commit_cadence"),
+		Items:      items,
+	}
 }
 
 func formatActivityDate(t time.Time) string {

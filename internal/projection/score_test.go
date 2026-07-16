@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/divijg19/Atlas/internal/facts"
+	"github.com/divijg19/Atlas/internal/index"
 	obs "github.com/divijg19/Atlas/internal/observations"
 )
 
@@ -58,10 +60,16 @@ func TestBuildAnalyzeProjection(t *testing.T) {
 		{Name: "fork", Size: 200, Fork: true, UpdatedAt: now},
 	}
 
-	proj, err := BuildAnalyzeProjection("alice", repos, now)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	// Build the canonical Profile (single derivation path) and render it.
+	repoFacts := facts.FromRepos(repos, now)
+	profile := index.Profile{
+		Username:     "alice",
+		Signals:      map[string]float64{"ownership": 1, "consistency": 1, "depth": 1, "activity": 1},
+		Repositories: repos,
+		Facts:        &repoFacts,
 	}
+
+	proj := BuildAnalyzeProjection(profile)
 	if proj.Username != "alice" {
 		t.Fatalf("username = %q, want alice", proj.Username)
 	}
@@ -80,10 +88,7 @@ func TestBuildAnalyzeProjection(t *testing.T) {
 		t.Fatalf("overall out of range: %d", proj.Overall)
 	}
 
-	again, err := BuildAnalyzeProjection("alice", repos, now)
-	if err != nil {
-		t.Fatalf("unexpected error on second call: %v", err)
-	}
+	again := BuildAnalyzeProjection(profile)
 	if again.Overall != proj.Overall {
 		t.Fatalf("overall not deterministic: %d != %d", again.Overall, proj.Overall)
 	}

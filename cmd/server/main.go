@@ -117,11 +117,7 @@ func analyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proj, err := projection.BuildAnalyzeProjection(username, profile.Repositories, time.Now())
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to build analysis")
-		return
-	}
+	proj := projection.BuildAnalyzeProjection(profile)
 
 	writeJSONResponse(w, http.StatusOK, proj)
 }

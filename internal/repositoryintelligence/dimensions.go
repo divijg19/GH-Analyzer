@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/divijg19/Atlas/internal/evidence"
+	"github.com/divijg19/Atlas/internal/facts"
 )
 
 // 1. Identity — is this repository clearly identified and distinguishable?
@@ -78,9 +79,9 @@ func buildHealth(rc repoContext) HealthDimension {
 	d.OpenIssues = rc.vestige.OpenIssues
 
 	switch {
-	case rc.pushAgeDays <= 90:
+	case rc.pushAgeDays <= facts.MaintenanceActiveWindowDays:
 		d.Level = LevelActive
-	case rc.pushAgeDays <= 365:
+	case rc.pushAgeDays <= facts.MaintenanceDormantWindowDays:
 		d.Level = LevelDormant
 	default:
 		d.Level = LevelInactive

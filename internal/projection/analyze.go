@@ -1,11 +1,9 @@
 package projection
 
 import (
-	"time"
-
 	"github.com/divijg19/Atlas/internal/evaluation"
+	"github.com/divijg19/Atlas/internal/index"
 	"github.com/divijg19/Atlas/internal/indicators"
-	"github.com/divijg19/Atlas/internal/observations"
 )
 
 // analyzeTopRepoLimit is the number of repositories surfaced in the
@@ -25,29 +23,27 @@ type AnalyzeProjection struct {
 	Intelligence []DimensionView `json:"intelligence,omitempty"`
 }
 
-// BuildAnalyzeProjection creates analysis-ready data from repos.
-//
-// referenceTime is the explicit "now" used for time-relative signal derivation,
-// keeping the projection deterministic for a given repository snapshot.
-func BuildAnalyzeProjection(username string, repos []observations.RepositoryVestige, referenceTime time.Time) (AnalyzeProjection, error) {
-	signalValues := indicators.ExtractSignals(repos, referenceTime)
-	scores := indicators.ScoreSignals(signalValues)
+// BuildAnalyzeProjection renders the Analyze view from an already-assembled
+// canonical Profile. It consumes the Profile's signals (the single canonical
+// derivation produced by index.BuildProfile) and never re-derives facts,
+// indicators, or evaluation from raw observations. The overall score and small
+// sample penalty are the analyze view's scoring policy, applied to the
+// canonical signals.
+func BuildAnalyzeProjection(p index.Profile) AnalyzeProjection {
+	signals := indicators.FromMap(p.Signals)
+	scores := indicators.ScoreSignals(signals)
 
-	// Compute overall from raw scores via the evaluation layer (single owner
-	// of scoring policy).
+	// Overall score via the evaluation layer (single owner of scoring policy),
+	// applied to the canonical signals.
 	overall := evaluation.OverallScore(scores)
+	overall = evaluation.ApplySmallSamplePenalty(overall, len(p.Repositories))
 
-	// Apply small sample penalty
-	repoCount := len(repos)
-	overall = evaluation.ApplySmallSamplePenalty(overall, repoCount)
-
-	// Extract top repositories
-	topRepos := extractTopRepositories(repos, analyzeTopRepoLimit)
+	topRepos := extractTopRepositories(p.Repositories, analyzeTopRepoLimit)
 
 	return AnalyzeProjection{
-		Username: username,
+		Username: p.Username,
 		Signals:  scores,
 		TopRepos: topRepos,
 		Overall:  overall,
-	}, nil
+	}
 }

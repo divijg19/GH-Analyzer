@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/divijg19/Atlas/internal/facts"
-	"github.com/divijg19/Atlas/internal/observations"
 )
 
 const (
@@ -55,10 +54,6 @@ func ScoreSignals(signals Signals) RawScore {
 		Consistency: score(signals.Consistency),
 		Depth:       score(signals.Depth),
 	}
-}
-
-func ExtractSignals(repos []observations.RepositoryVestige, referenceTime time.Time) Signals {
-	return ExtractSignalsFromFacts(facts.FromRepos(repos, referenceTime), referenceTime)
 }
 
 func ExtractSignalsFromFacts(f facts.RepositoryFacts, referenceTime time.Time) Signals {

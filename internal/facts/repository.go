@@ -73,11 +73,16 @@ const (
 	minDepthRepoSize  = 50
 	minConsistencyDen = 10
 	minDepthDen       = 5
+)
 
-	// maintenance window buckets (days since last push), mirroring the
-	// repository-level health/maintenance dimensions.
-	activeWindowDays  = 90
-	dormantWindowDays = 365
+// Maintenance window thresholds (days since last push). These are the single
+// authoritative definition of the maintenance recency windows shared by the
+// portfolio MaintenanceBuckets fact and the per-repository Maintenance
+// dimension in repositoryintelligence. Both must agree; this is the one place
+// the boundary is defined.
+const (
+	MaintenanceActiveWindowDays  = 90
+	MaintenanceDormantWindowDays = 365
 )
 
 // ForkParentFact captures deterministic upstream-lineage concentration: how many
@@ -177,9 +182,9 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 		}
 		pushAge := daysSince(repo.PushedAt, referenceTime)
 		switch {
-		case pushAge <= activeWindowDays:
+		case pushAge <= MaintenanceActiveWindowDays:
 			maintenance.Active++
-		case pushAge <= dormantWindowDays:
+		case pushAge <= MaintenanceDormantWindowDays:
 			maintenance.Recent++
 		default:
 			maintenance.Dormant++

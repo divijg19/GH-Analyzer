@@ -39,6 +39,10 @@ func BuildInspectProjection(p index.Profile) InspectProjection {
 		groupedEvidence = evidence.GenerateEvidence(*p.Facts, sig)
 	}
 
+	if p.ActivityFacts != nil {
+		groupedEvidence = append(groupedEvidence, evidence.GenerateActivityEvidence(*p.ActivityFacts))
+	}
+
 	return InspectProjection{
 		Username:      p.Username,
 		Metadata:      p.Metadata,

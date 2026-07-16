@@ -81,9 +81,10 @@ func parseAnalyzeArgs(args []string) (analyzeOptions, bool, error) {
 	return options, false, nil
 }
 
-// analyzeUser builds the AnalyzeProjection (signals, scores, top repositories)
-// and attaches the Candidate Intelligence view built from the same Profile.
-// Profile assembly uses the single canonical owner (index.BuildProfile).
+// analyzeUser builds the AnalyzeProjection from a single canonical Profile and
+// attaches the Candidate Intelligence view built from that same Profile.
+// Profile assembly uses the single canonical owner (index.BuildProfile); no
+// observation, fact, indicator, or evaluation is re-derived here.
 func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 	if strings.TrimSpace(username) == "" {
 		return projection.AnalyzeProjection{}, fmt.Errorf("missing GitHub username")
@@ -94,21 +95,17 @@ func analyzeUser(username string) (projection.AnalyzeProjection, error) {
 
 	client := acquisition.NewClient()
 
-	// Existing projection path (signals, scores, top repositories).
-	repos, err := client.FetchReposNormalized(ctx, username)
-	if err != nil {
-		return projection.AnalyzeProjection{}, err
-	}
-	proj, err := projection.BuildAnalyzeProjection(username, repos, time.Now())
-	if err != nil {
-		return projection.AnalyzeProjection{}, err
-	}
-
-	// Candidate Intelligence: canonical semantic interpretation of the Profile.
+	// Canonical Profile assembly — the single source of truth for facts,
+	// indicators, metadata, and contributions.
 	profile, err := index.BuildProfile(ctx, client, username, time.Now())
 	if err != nil {
 		return projection.AnalyzeProjection{}, err
 	}
+
+	// Analyze projection renders the canonical signals (no re-derivation).
+	proj := projection.BuildAnalyzeProjection(profile)
+
+	// Candidate Intelligence: canonical semantic interpretation of the Profile.
 	ci, err := intelligence.BuildCandidateIntelligence(ctx, &profile, time.Now())
 	if err != nil {
 		return projection.AnalyzeProjection{}, err
