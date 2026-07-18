@@ -59,7 +59,7 @@ func buildBreadth(repos []repositoryintelligence.RepositoryIntelligence) Breadth
 	default:
 		dim.Level = LevelModerate
 	}
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "breadth", []string{"technology"},
 			factItem("distinct languages", dim.DistinctLangs),

@@ -343,6 +343,59 @@ contract.
   language, repository continuity, ownership/origin). The earlier topic-leading
   heuristic was a placeholder and has been removed.
 
+#### 10.10 Topology Intelligence (synthesis)
+
+Topology Intelligence is genuine **synthesis**: it interprets the portfolio's
+structural shape from deterministic `RepositoryFacts` rather than re-listing
+observations. It answers "is the work concentrated, distributed, or fragmented?"
+
+- **Inputs**: `RepositoryFacts.OriginalRepos`, `TotalRepos`, `MaintenanceBuckets`,
+  `ForkLineage`.
+- **Synthesis**: `OriginalityRatio` and `MaintenanceShare` (deterministic getters
+  on `RepositoryFacts`); `TopUpstreamShare` = share of forks from the single most
+  forked upstream; `Concentration` classified from those three values
+  (concentrated / distributed / fork-heavy / upstream-concentrated /
+  abandoned-leaning).
+- **Invariants**: deterministic; derived only from the canonical facts aggregate
+  (never raw `RepositoryVestige`); provenance references the contributing
+  repositories and their governance/maintenance/health dimensions.
+- **Evidence mapping**: `topology` evidence group.
+
+#### 10.11 Technology Intelligence (synthesis)
+
+Technology Intelligence synthesizes the candidate's **technology trajectory**
+from the lossless `TechnologyTimeline` — diversification, specialization, and
+transitions — without collecting anything new.
+
+- **Inputs**: `RepositoryFacts.TechnologyTimeline` (`year → []language`).
+- **Synthesis**: `Diversification` = distinct languages across all years;
+  `Specialization` = share of creation years in which the most persistent
+  language appears; `Transitions` = deterministic adoptions (first appearance in
+  a later year) plus drops (language absent from the latest-year footprint).
+- **Invariants**: deterministic; lossless timeline in, deterministic summary out;
+  provenance references the contributing repositories and their technology
+  dimension.
+- **Evidence mapping**: `technology` evidence group.
+
+These two dimensions are the v0.9.5 answer to "is Atlas an intelligence engine?":
+they derive new deterministic knowledge from facts Atlas already owned.
+
+## 10.12 Confidence Model
+
+Confidence classifies **how much evidence supported a dimension's conclusion**,
+not whether the conclusion is favourable. It is derived deterministically from
+sample size (the volume of evidence), not from opinion:
+
+- `low` — empty or tiny sample (≤ 2 repositories / creation years).
+- `moderate` — small sample (3–9).
+- `high` — substantial sample (≥ 10).
+
+The thresholds are documented calibration constants (`confidenceLowSample`,
+`confidenceModerateSample` in `internal/intelligence/explain.go`), not magic
+numbers. Confidence is surfaced on every `DimensionView` so consumers can weigh
+conclusions by evidence volume. It never alters a Level; it explains the strength
+of the supporting observation set.
+
 ## 11. Explainability Model
 
 - Every `Summary` is assembled **deterministically** from `Evidence`.

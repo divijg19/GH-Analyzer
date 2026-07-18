@@ -51,7 +51,7 @@ func buildMaintenance(repos []repositoryintelligence.RepositoryIntelligence) Mai
 	dim.StaleRepos = stale
 	dim.ArchivedRepos = archived
 	dim.Level = levelFromRatio(ratio, 0.7, 0.4)
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "maintenance", []string{"maintenance"},
 			factItem("maintained repositories", maintained),

@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/divijg19/Atlas/internal/engine"
 	"github.com/divijg19/Atlas/internal/evaluation"
+	"github.com/divijg19/Atlas/internal/intelligence"
 	"github.com/divijg19/Atlas/internal/presets"
 	"github.com/divijg19/Atlas/internal/projection"
 	searchpkg "github.com/divijg19/Atlas/internal/search"
@@ -112,12 +115,18 @@ func runQuery(args []string) error {
 
 	projections := make([]projection.SearchProjection, len(results))
 	for i, result := range results {
-		projections[i] = projection.BuildSearchProjection(
+		proj := projection.BuildSearchProjection(
 			result.Profile,
 			result.Score,
 			evaluation.ClassifyConfidence(result.Score),
 			result.Reasons,
 		)
+		// Attach the canonical Candidate Intelligence so query results explain
+		// why a candidate matched, built from the same assembled Profile.
+		if ci, err := intelligence.BuildCandidateIntelligence(context.Background(), &result.Profile, time.Now()); err == nil {
+			proj.Intelligence = projection.IntelligenceView(ci)
+		}
+		projections[i] = proj
 	}
 
 	if *jsonOutput {

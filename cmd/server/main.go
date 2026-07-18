@@ -15,6 +15,7 @@ import (
 	"github.com/divijg19/Atlas/internal/engine"
 	"github.com/divijg19/Atlas/internal/evaluation"
 	indexpkg "github.com/divijg19/Atlas/internal/index"
+	"github.com/divijg19/Atlas/internal/intelligence"
 	"github.com/divijg19/Atlas/internal/projection"
 	searchpkg "github.com/divijg19/Atlas/internal/search"
 	"github.com/divijg19/Atlas/internal/storage"
@@ -178,12 +179,21 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	projections := make([]projection.SearchProjection, len(results))
 	for i, result := range results {
-		projections[i] = projection.BuildSearchProjection(
+		proj := projection.BuildSearchProjection(
 			result.Profile,
 			result.Score,
 			evaluation.ClassifyConfidence(result.Score),
 			result.Reasons,
 		)
+		// Attach the canonical Candidate Intelligence so search results explain
+		// why a candidate matched, using the single assembled Profile.
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		ci, err := intelligence.BuildCandidateIntelligence(ctx, &result.Profile, time.Now())
+		cancel()
+		if err == nil {
+			proj.Intelligence = projection.IntelligenceView(ci)
+		}
+		projections[i] = proj
 	}
 
 	response := searchResponse{

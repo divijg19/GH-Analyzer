@@ -334,6 +334,25 @@ func FromRepos(repos []observations.RepositoryVestige, referenceTime time.Time) 
 	}
 }
 
+// OriginalReposRatio is the fraction of repositories that are original (not
+// forks). Deterministic; 0 when there are no repositories.
+func (r RepositoryFacts) OriginalReposRatio() float64 {
+	if r.TotalRepos == 0 {
+		return 0
+	}
+	return float64(r.OriginalRepos) / float64(r.TotalRepos)
+}
+
+// MaintenanceShare is the fraction of repositories whose last push is recent
+// enough to count as active or recent (within the maintenance windows).
+// Deterministic; 0 when there are no repositories.
+func (r RepositoryFacts) MaintenanceShare() float64 {
+	if r.TotalRepos == 0 {
+		return 0
+	}
+	return float64(r.MaintenanceBuckets.Active+r.MaintenanceBuckets.Recent) / float64(r.TotalRepos)
+}
+
 func rankLanguages(languageBytes map[string]int64) []string {
 	if len(languageBytes) == 0 {
 		return nil

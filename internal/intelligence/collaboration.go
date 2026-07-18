@@ -57,7 +57,7 @@ func buildCollaboration(repos []repositoryintelligence.RepositoryIntelligence) C
 	default:
 		dim.Level = LevelLow
 	}
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "collaboration", []string{"community"},
 			factItem("total collaborators", collaborators),

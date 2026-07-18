@@ -10,10 +10,11 @@ import (
 // Inspect: evidence); it never recomputes meaning. The canonical data lives in
 // intelligence.CandidateIntelligence.
 type DimensionView struct {
-	Name     string                   `json:"name"`
-	Level    string                   `json:"level"`
-	Summary  string                   `json:"summary"`
-	Evidence []evidence.EvidenceGroup `json:"evidence,omitempty"`
+	Name       string                   `json:"name"`
+	Level      string                   `json:"level"`
+	Confidence string                   `json:"confidence,omitempty"`
+	Summary    string                   `json:"summary"`
+	Evidence   []evidence.EvidenceGroup `json:"evidence,omitempty"`
 }
 
 // IntelligenceView builds presentation views from a CandidateIntelligence. It
@@ -25,23 +26,26 @@ func IntelligenceView(ci *intelligence.CandidateIntelligence) []DimensionView {
 		return nil
 	}
 	return []DimensionView{
-		dimView("ownership", ci.Ownership.Level, ci.Ownership),
-		dimView("delivery", ci.Delivery.Level, ci.Delivery),
-		dimView("breadth", ci.Breadth.Level, ci.Breadth),
-		dimView("focus", ci.Focus.Level, ci.Focus),
-		dimView("maintenance", ci.Maintenance.Level, ci.Maintenance),
-		dimView("project", ci.Project.Level, ci.Project),
-		dimView("collaboration", ci.Collaboration.Level, ci.Collaboration),
-		dimView("documentation", ci.Documentation.Level, ci.Documentation),
-		dimView("portfolio", ci.Portfolio.Level, ci.Portfolio),
+		dimView("ownership", ci.Ownership.Level, ci.Ownership.Confidence, ci.Ownership),
+		dimView("delivery", ci.Delivery.Level, ci.Delivery.Confidence, ci.Delivery),
+		dimView("breadth", ci.Breadth.Level, ci.Breadth.Confidence, ci.Breadth),
+		dimView("focus", ci.Focus.Level, ci.Focus.Confidence, ci.Focus),
+		dimView("maintenance", ci.Maintenance.Level, ci.Maintenance.Confidence, ci.Maintenance),
+		dimView("project", ci.Project.Level, ci.Project.Confidence, ci.Project),
+		dimView("collaboration", ci.Collaboration.Level, ci.Collaboration.Confidence, ci.Collaboration),
+		dimView("documentation", ci.Documentation.Level, ci.Documentation.Confidence, ci.Documentation),
+		dimView("portfolio", ci.Portfolio.Level, ci.Portfolio.Confidence, ci.Portfolio),
+		dimView("topology", ci.Topology.Level, ci.Topology.Confidence, ci.Topology),
+		dimView("technology", ci.Technology.Level, ci.Technology.Confidence, ci.Technology),
 	}
 }
 
-func dimView(name string, level intelligence.Level, d intelligence.Dimension) DimensionView {
+func dimView(name string, level intelligence.Level, confidence intelligence.Confidence, d intelligence.Dimension) DimensionView {
 	return DimensionView{
-		Name:     name,
-		Level:    string(level),
-		Summary:  d.Summary(),
-		Evidence: d.Evidence(),
+		Name:       name,
+		Level:      string(level),
+		Confidence: string(confidence),
+		Summary:    d.Summary(),
+		Evidence:   d.Evidence(),
 	}
 }

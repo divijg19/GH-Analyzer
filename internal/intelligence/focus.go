@@ -83,7 +83,7 @@ func buildFocus(repos []repositoryintelligence.RepositoryIntelligence) FocusInte
 	default:
 		dim.Level = LevelLow
 	}
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "focus", []string{"technology"},
 			factItem("dominant language", dominant),

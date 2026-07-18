@@ -49,7 +49,7 @@ func buildDelivery(repos []repositoryintelligence.RepositoryIntelligence) Delive
 	dim.ReleasedRepos = released
 	dim.TotalReleases = totalReleases
 	dim.Level = levelFromRatio(ratio, 0.5, 0.2)
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "delivery", []string{"delivery"},
 			factItem("released repositories", released),

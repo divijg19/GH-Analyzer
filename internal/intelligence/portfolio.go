@@ -55,7 +55,7 @@ func buildPortfolio(repos []repositoryintelligence.RepositoryIntelligence, meta 
 		dim.Level = LevelNarrow
 	}
 	if dim.Level != LevelUnknown {
-		dim.Confidence = ConfidenceHigh
+		dim.Confidence = confidenceForSample(len(repos))
 	}
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "portfolio", []string{"risk"},

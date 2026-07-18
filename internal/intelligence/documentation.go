@@ -50,7 +50,7 @@ func buildDocumentation(repos []repositoryintelligence.RepositoryIntelligence) D
 	dim.DocumentedRepos = documented
 	dim.LicensedRepos = licensed
 	dim.Level = levelFromRatio(ratio, 0.6, 0.3)
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "documentation", []string{"documentation"},
 			factItem("documented repositories", documented),

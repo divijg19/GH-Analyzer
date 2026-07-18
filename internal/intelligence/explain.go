@@ -23,6 +23,28 @@ func pct(ratio float64) int {
 	return int(ratio*100 + 0.5)
 }
 
+// confidenceForSample derives a dimension's confidence from the volume of
+// evidence supporting it: an empty or tiny sample yields low confidence, a
+// moderate sample yields moderate, and a substantial sample yields high. This
+// makes Confidence answer "how much evidence supports this conclusion?" rather
+// than being a constant. The thresholds are documented calibration constants,
+// not magic numbers.
+const (
+	confidenceLowSample      = 2
+	confidenceModerateSample = 10
+)
+
+func confidenceForSample(n int) Confidence {
+	switch {
+	case n <= confidenceLowSample:
+		return ConfidenceLow
+	case n < confidenceModerateSample:
+		return ConfidenceModerate
+	default:
+		return ConfidenceHigh
+	}
+}
+
 func factItem(description string, value interface{}) evidence.Evidence {
 	return evidence.Evidence{Kind: "fact", Description: description, Value: fmt.Sprintf("%v", value)}
 }

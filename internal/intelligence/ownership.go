@@ -48,7 +48,7 @@ func buildOwnership(repos []repositoryintelligence.RepositoryIntelligence) Owner
 	dim.ForkRatio = float64(forks) / float64(total)
 	dim.Collaborators = collaborators
 	dim.Level = levelFromRatio(ratio, 0.7, 0.4)
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "ownership", []string{"governance"},
 			factItem("original repositories", original),

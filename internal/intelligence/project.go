@@ -63,7 +63,7 @@ func buildProject(repos []repositoryintelligence.RepositoryIntelligence) Project
 	default:
 		dim.Level = LevelModerate
 	}
-	dim.Confidence = ConfidenceHigh
+	dim.Confidence = confidenceForSample(len(repos))
 	dim.evidence = []evidence.EvidenceGroup{
 		groupFrom(repos, "project", []string{"architecture", "lifecycle", "technology"},
 			factItem("total size (KB)", totalSize),

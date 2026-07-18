@@ -40,6 +40,8 @@ func BuildCandidateIntelligence(ctx context.Context, p *index.Profile, reference
 		Collaboration: buildCollaboration(repos),
 		Documentation: buildDocumentation(repos),
 		Portfolio:     buildPortfolio(repos, p.Metadata, referenceTime),
+		Topology:      buildTopology(repos, p.Facts),
+		Technology:    buildTechnology(repos, p.Facts),
 	}
 	return ci, nil
 }

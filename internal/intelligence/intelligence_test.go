@@ -87,8 +87,8 @@ func TestDimensionContract(t *testing.T) {
 		t.Fatalf("build failed: %v", err)
 	}
 
-	if len(ci.Dimensions()) != 9 {
-		t.Fatalf("expected 9 dimensions, got %d", len(ci.Dimensions()))
+	if len(ci.Dimensions()) != 11 {
+		t.Fatalf("expected 11 dimensions, got %d", len(ci.Dimensions()))
 	}
 	for _, d := range ci.Dimensions() {
 		if d.Name() == "" {

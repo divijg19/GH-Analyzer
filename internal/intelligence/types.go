@@ -71,6 +71,8 @@ type CandidateIntelligence struct {
 	Collaboration CollaborationIntelligence
 	Documentation DocumentationIntelligence
 	Portfolio     PortfolioIntelligence
+	Topology      TopologyIntelligence
+	Technology    TechnologyIntelligence
 
 	// Growth is a reserved dimension. It is intentionally absent from v0.9.0:
 	// Atlas lacks historical candidate snapshots required to implement it
@@ -91,5 +93,7 @@ func (c *CandidateIntelligence) Dimensions() []Dimension {
 		c.Collaboration,
 		c.Documentation,
 		c.Portfolio,
+		c.Topology,
+		c.Technology,
 	}
 }
