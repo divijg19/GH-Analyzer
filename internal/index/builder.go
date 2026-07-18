@@ -26,6 +26,7 @@ import (
 // It is satisfied by *acquisition.Client and by test fakes.
 type ProfileFetcher interface {
 	FetchReposNormalized(ctx context.Context, username string) ([]observations.RepositoryVestige, error)
+	FetchReposEnriched(ctx context.Context, username string) ([]observations.RepositoryVestige, error)
 	FetchUser(ctx context.Context, username string) (*acquisition.UserDTO, error)
 	FetchContributions(ctx context.Context, username string) (*acquisition.ContributionsDTO, error)
 	FetchActivityObservations(ctx context.Context, username string, createdAt time.Time) []observations.ActivityObservation
@@ -44,7 +45,7 @@ func BuildProfile(ctx context.Context, fetcher ProfileFetcher, username string, 
 		return Profile{}, fmt.Errorf("username is required")
 	}
 
-	repos, err := fetcher.FetchReposNormalized(ctx, username)
+	repos, err := fetcher.FetchReposEnriched(ctx, username)
 	if err != nil {
 		return Profile{}, fmt.Errorf("fetch repos for %q: %w", username, err)
 	}
