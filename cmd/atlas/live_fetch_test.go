@@ -30,6 +30,13 @@ func (m *mockAcquisitionClient) FetchReposNormalized(_ context.Context, username
 	return r, nil
 }
 
+// FetchReposEnriched satisfies index.ProfileFetcher. The mock has no GraphQL
+// enrichment layer, so it returns the same canned repositories as
+// FetchReposNormalized (enrichment is a no-op in tests).
+func (m *mockAcquisitionClient) FetchReposEnriched(_ context.Context, username string) ([]observations.RepositoryVestige, error) {
+	return m.FetchReposNormalized(context.Background(), username)
+}
+
 func (m *mockAcquisitionClient) FetchUser(_ context.Context, _ string) (*acquisition.UserDTO, error) {
 	return &acquisition.UserDTO{}, nil
 }

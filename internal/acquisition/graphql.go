@@ -56,12 +56,18 @@ func (c *Client) queryRepo(ctx context.Context, owner, name string) (*graphQLRep
 		return nil, fmt.Errorf("failed to decode GraphQL response: %w", err)
 	}
 
-	if len(gqlResp.Errors) > 0 {
-		return nil, classifyGraphQLError(resp.StatusCode, gqlResp.Errors[0].Message,
-			fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message))
-	}
-
+	// GitHub GraphQL returns field-level permission errors (e.g. collaborators
+	// on a repo the token may not inspect) inside the top-level Errors array
+	// while still populating Data.Repository with the readable fields
+	// (languages, releases, pullRequests, discussions). Treat such partial
+	// responses as usable rather than fatal, so one denied field does not
+	// discard all enrichment. Only a missing repository (not found / no read
+	// access) is a hard failure.
 	if gqlResp.Data.Repository == nil {
+		if len(gqlResp.Errors) > 0 {
+			return nil, classifyGraphQLError(resp.StatusCode, gqlResp.Errors[0].Message,
+				fmt.Errorf("GraphQL errors: %s", gqlResp.Errors[0].Message))
+		}
 		return nil, fmt.Errorf("%w: repository %s/%s", ErrNotFound, owner, name)
 	}
 
